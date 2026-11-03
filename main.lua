@@ -1,0 +1,4 @@
+-- SIRVIENTA launcher stub
+-- The actual project entrypoint is `main.py`.
+-- This file intentionally keeps the workspace compatible with Lua-based tooling while
+-- the runtime application lives in the Python package under `sirvienta/`.

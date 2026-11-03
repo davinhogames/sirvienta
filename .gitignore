@@ -1,0 +1,12 @@
+.env
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+/data/sirvienta.db
+android/.gradle/
+android/local.properties
+android/app/build/
+android/app/.cxx/
+*.jks
+*.keystore

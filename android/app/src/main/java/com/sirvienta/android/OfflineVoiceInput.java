@@ -1,0 +1,176 @@
+package com.sirvienta.android;
+
+import android.content.Context;
+import android.util.Log;
+
+import org.json.JSONException;
+import org.json.JSONObject;
+import org.vosk.Model;
+import org.vosk.Recognizer;
+import org.vosk.android.SpeechService;
+
+import java.io.IOException;
+import java.util.Locale;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+final class OfflineVoiceInput {
+    interface Listener {
+        void onWakeWord();
+        void onCommand(String text);
+        void onGoodbye();
+        void onError(String message, Throwable error);
+    }
+
+    private static final String TAG = "SirvientaOfflineSTT";
+    private static final Pattern WAKE_WORD = Pattern.compile("(?<![\\p{L}])sirvienta(?![\\p{L}])");
+
+    private Model model;
+    private Recognizer recognizer;
+    private SpeechService speechService;
+    private Listener listener;
+    private volatile boolean active;
+    private volatile boolean awaitingCommand;
+
+    void start(Context context, Listener listener, boolean beginWithCommand) throws IOException {
+        if (active) {
+            return;
+        }
+        this.listener = listener;
+        model = new Model(LocalVoiceAssets.ensureVoskModel(context).getAbsolutePath());
+        try {
+            recognizer = new Recognizer(model, 16_000.0f);
+            speechService = new SpeechService(recognizer, 16_000.0f);
+            active = true;
+            awaitingCommand = beginWithCommand;
+            boolean started = speechService.startListening(new org.vosk.android.RecognitionListener() {
+                @Override
+                public void onPartialResult(String hypothesis) { }
+
+                @Override
+                public void onResult(String hypothesis) {
+                    handleHypothesis(hypothesis);
+                }
+
+                @Override
+                public void onFinalResult(String hypothesis) {
+                    handleHypothesis(hypothesis);
+                }
+
+                @Override
+                public void onError(Exception error) {
+                    active = false;
+                    Listener current = OfflineVoiceInput.this.listener;
+                    if (current != null) {
+                        current.onError("Falló el reconocimiento de voz local.", error);
+                    }
+                }
+
+                @Override
+                public void onTimeout() { }
+            });
+            if (!started) {
+                active = false;
+                throw new IOException("El micrófono ya está ocupado por otro reconocimiento.");
+            }
+        } catch (IOException | RuntimeException error) {
+            active = false;
+            close();
+            if (error instanceof IOException) {
+                throw (IOException) error;
+            }
+            throw new IOException("No se pudo iniciar el reconocimiento de voz offline.", error);
+        }
+    }
+
+    void beginCommand() {
+        if (!active || speechService == null) {
+            return;
+        }
+        awaitingCommand = true;
+        speechService.reset();
+    }
+
+    void pauseForResponse() {
+        awaitingCommand = false;
+        if (speechService != null) {
+            speechService.setPause(true);
+        }
+    }
+
+    void resumeAfterResponse() {
+        if (!active || speechService == null) {
+            return;
+        }
+        speechService.reset();
+        speechService.setPause(false);
+    }
+
+    boolean isActive() {
+        return active;
+    }
+
+    void close() {
+        active = false;
+        awaitingCommand = false;
+        if (speechService != null) {
+            speechService.cancel();
+            speechService.shutdown();
+            speechService = null;
+        }
+        if (recognizer != null) {
+            recognizer.close();
+            recognizer = null;
+        }
+        if (model != null) {
+            model.close();
+            model = null;
+        }
+        listener = null;
+    }
+
+    private void handleHypothesis(String json) {
+        if (!active || json == null || json.isEmpty()) {
+            return;
+        }
+        final String text;
+        try {
+            text = new JSONObject(json).optString("text", "").trim();
+        } catch (JSONException error) {
+            Log.e(TAG, "Vosk devolvió un resultado no válido.", error);
+            return;
+        }
+        if (text.isEmpty()) {
+            return;
+        }
+
+        Listener current = listener;
+        if (current == null) {
+            return;
+        }
+        if (awaitingCommand) {
+            awaitingCommand = false;
+            pauseForResponse();
+            String normalized = text.toLowerCase(Locale.ROOT);
+            if (normalized.matches(".*\\bad[ií]os\\b.*")) {
+                current.onGoodbye();
+            } else {
+                current.onCommand(text);
+            }
+            return;
+        }
+
+        Matcher wakeWord = WAKE_WORD.matcher(text.toLowerCase(Locale.ROOT));
+        if (!wakeWord.find()) {
+            return;
+        }
+        String command = text.substring(wakeWord.end()).trim().replaceAll("^[,.:;\\s]+", "");
+        if (command.isEmpty()) {
+            awaitingCommand = true;
+            current.onWakeWord();
+        } else {
+            pauseForResponse();
+            current.onCommand(command);
+        }
+    }
+}

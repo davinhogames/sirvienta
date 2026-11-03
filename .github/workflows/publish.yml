@@ -1,0 +1,159 @@
+name: Publish Sirvienta
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-sirvienta
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
+    steps:
+      - name: Check out source and model
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Configure Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Configure Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android build packages
+        run: sdkmanager "platforms;android-35" "ndk;29.0.13113456" "cmake;3.31.6"
+
+      - name: Check release signing secrets
+        shell: bash
+        env:
+          ANDROID_SIGNING_KEYSTORE_BASE64: ${{ secrets.ANDROID_SIGNING_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          : "${ANDROID_SIGNING_KEYSTORE_BASE64:?Set the Android release-signing secrets before publishing.}"
+          : "${ANDROID_KEYSTORE_PASSWORD:?Set the Android release-signing secrets before publishing.}"
+          : "${ANDROID_KEY_ALIAS:?Set the Android release-signing secrets before publishing.}"
+          : "${ANDROID_KEY_PASSWORD:?Set the Android release-signing secrets before publishing.}"
+
+      - name: Prepare release signing key
+        shell: bash
+        env:
+          ANDROID_SIGNING_KEYSTORE_BASE64: ${{ secrets.ANDROID_SIGNING_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          printf '%s' "$ANDROID_SIGNING_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/sirvienta-release.jks"
+          {
+            echo "SIRVIENTA_KEYSTORE_PATH=$RUNNER_TEMP/sirvienta-release.jks"
+            echo "SIRVIENTA_KEYSTORE_PASSWORD=$ANDROID_KEYSTORE_PASSWORD"
+            echo "SIRVIENTA_KEY_ALIAS=$ANDROID_KEY_ALIAS"
+            echo "SIRVIENTA_KEY_PASSWORD=$ANDROID_KEY_PASSWORD"
+          } >> "$GITHUB_ENV"
+
+      - name: Set Android version
+        shell: bash
+        run: echo "SIRVIENTA_VERSION_CODE=$((GITHUB_RUN_NUMBER + 2))" >> "$GITHUB_ENV"
+
+      - name: Build signed Android APK
+        working-directory: android
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_RUN_NUMBER: ${{ github.run_number }}
+        run: |
+          ./gradlew --no-daemon assembleRelease \
+            "-PsirvientaVersionCode=$SIRVIENTA_VERSION_CODE" \
+            "-PsirvientaVersionName=0.1.1-build.$GITHUB_RUN_NUMBER" \
+            "-PsirvientaUpdateManifestUrl=https://github.com/$GITHUB_REPOSITORY/releases/latest/download/latest.json"
+
+      - name: Create release manifest
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_RUN_NUMBER: ${{ github.run_number }}
+        run: |
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          apk = Path("android/app/build/outputs/apk/release/app-release.apk")
+          if not apk.is_file():
+              raise SystemExit(f"Release APK was not created: {apk}")
+
+          digest = hashlib.sha256()
+          with apk.open("rb") as file:
+              for chunk in iter(lambda: file.read(1024 * 1024), b""):
+                  digest.update(chunk)
+
+          repository = os.environ["GITHUB_REPOSITORY"]
+          run_number = os.environ["GITHUB_RUN_NUMBER"]
+          manifest = {
+              "available": True,
+              "version_code": int(os.environ["SIRVIENTA_VERSION_CODE"]),
+              "version_name": f"0.1.1-build.{run_number}",
+              "architecture": "arm64-v8a",
+              "kind": "release",
+              "size_bytes": apk.stat().st_size,
+              "sha256": digest.hexdigest(),
+              "download_url": f"https://github.com/{repository}/releases/latest/download/sirvienta-android-beta.apk",
+              "published_at": datetime.now(timezone.utc).isoformat(),
+          }
+          Path(os.environ["RUNNER_TEMP"], "latest.json").write_text(
+              json.dumps(manifest, ensure_ascii=False, indent=2) + "\n",
+              encoding="utf-8",
+          )
+          PY
+
+      - name: Replace latest Android beta release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_RUN_NUMBER: ${{ github.run_number }}
+        run: |
+          gh release delete sirvienta-latest --yes --cleanup-tag || true
+          git push origin --delete refs/tags/sirvienta-latest || true
+          gh release create sirvienta-latest \
+            "android/app/build/outputs/apk/release/app-release.apk#sirvienta-android-beta.apk" \
+            "$RUNNER_TEMP/latest.json" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "Sirvienta Android Beta 0.1.1-build.$GITHUB_RUN_NUMBER" \
+            --notes "Beta Android ARM64 firmada. SHA-256 del APK incluido en latest.json. La instalacion requiere aprobacion en el telefono." \
+            --latest
+
+      - name: Build GitHub Pages site
+        run: |
+          python scripts/build_github_pages.py \
+            --web-dir web \
+            --release-manifest "$RUNNER_TEMP/latest.json" \
+            --output-dir "$RUNNER_TEMP/sirvienta-pages"
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ${{ runner.temp }}/sirvienta-pages
+
+      - name: Deploy GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

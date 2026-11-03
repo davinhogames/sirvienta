@@ -1,0 +1,27 @@
+Offline Android voice components
+
+Qwen2.5-0.5B-Instruct (quantized GGUF model)
+Upstream model by the Qwen team / Alibaba Cloud.
+Apache License 2.0
+https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct
+
+Vosk Android library 0.3.47
+Copyright 2019 Alpha Cephei Inc.
+Apache License 2.0
+https://github.com/alphacep/vosk-api
+
+Spanish speech model vosk-model-small-es-0.42
+Copyright 2022-2050 AC Technologies LLC.
+Model source: https://alphacephei.com/vosk/models
+The model README is included next to the model assets.
+
+sherpa-onnx Android runtime 1.13.8
+Apache License 2.0
+https://github.com/k2-fsa/sherpa-onnx
+
+Spanish voice es_ES-carlfm-x_low
+Dataset by carlfm; public-domain dataset according to its model card.
+https://huggingface.co/rhasspy/piper-voices/tree/v1.0.0/es/es_ES/carlfm/x_low
+
+espeak-ng-data is distributed by sherpa-onnx for Piper-compatible voices.
+https://github.com/k2-fsa/sherpa-onnx/releases/tag/tts-models

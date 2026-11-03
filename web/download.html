@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#090b12" />
+    <meta name="description" content="Descarga Sirvienta para Android o añádela a la pantalla de inicio de tu iPhone." />
+    <meta property="og:title" content="Sirvienta · Tu día, un poco más fácil" />
+    <meta property="og:description" content="Descarga la beta para Android o añade Sirvienta a la pantalla de inicio de tu iPhone." />
+    <meta property="og:type" content="website" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Sirvienta" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <link rel="manifest" href="/static/manifest.webmanifest" />
+    <link rel="icon" href="/static/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/static/apple-touch-icon.png" />
+    <link rel="stylesheet" href="/static/download.css" />
+    <title>Descarga Sirvienta · Tu asistente, a tu manera</title>
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="wordmark" href="/descargar" aria-label="Sirvienta, inicio">
+        <span class="brand-mark" aria-hidden="true">S</span>
+        <span>SIRVIENTA</span>
+      </a>
+      <nav class="site-nav" aria-label="Navegación">
+        <a href="#plataformas">Plataformas</a>
+        <a href="#privacidad">Privacidad</a>
+        <a href="#preguntas">Preguntas</a>
+      </nav>
+      <a class="header-cta" href="#plataformas">Descargar <span aria-hidden="true">↗</span></a>
+    </header>
+
+    <main id="inicio">
+      <section class="hero">
+        <div class="hero-copy">
+          <div class="eyebrow"><span class="status-dot"></span> TU ASISTENTE PERSONAL</div>
+          <h1>Tu día.<br /><span>Un poco más fácil.</span></h1>
+          <p class="hero-description">
+            Una asistente de voz que te ayuda a pensar, recordar y poner tus ideas en marcha.
+            Empieza en Android o llévala a la pantalla de inicio de tu iPhone.
+          </p>
+          <div class="hero-actions">
+            <a class="button button-light" href="#plataformas">Encuentra tu versión <span aria-hidden="true">↓</span></a>
+            <a class="text-link" href="#como-funciona">Conoce cómo funciona <span aria-hidden="true">↗</span></a>
+          </div>
+          <div class="hero-footnote"><span aria-hidden="true">✦</span> Diseñada para ayudarte, no para complicarte.</div>
+        </div>
+
+        <div class="hero-art" aria-label="Ilustración de la interfaz de Sirvienta">
+          <div class="orbit orbit-one"></div>
+          <div class="orbit orbit-two"></div>
+          <div class="orbit orbit-three"></div>
+          <div class="assistant-orb"><span>S</span></div>
+          <div class="floating-card card-top">
+            <span class="card-icon" aria-hidden="true">✳</span>
+            <span><strong>Hola, aquí estoy</strong><small>Lista cuando tú lo estés</small></span>
+          </div>
+          <div class="floating-card card-bottom">
+            <span class="sound-bars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+            <span><strong>Un momento para ti</strong><small>Tu voz, tu ritmo</small></span>
+          </div>
+          <span class="art-caption">PENSADA PARA ACOMPAÑARTE</span>
+        </div>
+      </section>
+
+      <section class="trust-strip" aria-label="Características">
+        <div><span class="trust-icon">◉</span><span><strong>Tuya</strong><small>Tú decides qué compartir</small></span></div>
+        <div><span class="trust-icon">⌁</span><span><strong>A tu ritmo</strong><small>Voz o texto, como prefieras</small></span></div>
+        <div><span class="trust-icon">✳</span><span><strong>En evolución</strong><small>Una beta en construcción</small></span></div>
+      </section>
+
+      <section id="plataformas" class="platform-section">
+        <div class="section-heading">
+          <div>
+            <div class="eyebrow">ELIGE TU DISPOSITIVO</div>
+            <h2>Sirvienta va contigo.</h2>
+          </div>
+          <p>Empieza en unos pasos. Consulta qué ofrece cada versión antes de instalar.</p>
+        </div>
+
+        <div class="platform-grid">
+          <article class="platform-card android-card">
+            <div class="platform-topline">
+              <span class="platform-icon android-icon" aria-hidden="true">A</span>
+              <span class="availability"><i></i> BETA DISPONIBLE</span>
+            </div>
+            <h3>Android</h3>
+            <p class="platform-description">La app nativa para Android, con conversación local y herramientas de voz en dispositivos compatibles.</p>
+            <ul class="feature-list">
+              <li><span>✓</span> Chat y voz sin conexión tras la instalación</li>
+              <li><span>✓</span> Notas y recordatorios en el dispositivo</li>
+              <li><span>!</span> Requiere Android ARM64 y bastante espacio</li>
+            </ul>
+            <a id="androidDownload" class="button button-light platform-button" href="/downloads/android">
+              Descargar APK <span aria-hidden="true">↓</span>
+            </a>
+            <p id="androidMeta" class="platform-meta">APK beta · Android ARM64</p>
+            <p id="downloadNotice" class="download-notice" role="status" hidden></p>
+          </article>
+
+          <article class="platform-card iphone-card">
+            <div class="platform-topline">
+              <span class="platform-icon apple-icon" aria-hidden="true">✳</span>
+              <span class="availability web-availability"><i></i> WEB PARA IPHONE</span>
+            </div>
+            <h3>iPhone</h3>
+            <p class="platform-description">Añade la experiencia web de Sirvienta a tu pantalla de inicio desde Safari. No necesitas descargar un archivo.</p>
+            <ul class="feature-list">
+              <li><span>✓</span> Acceso rápido como una app web</li>
+              <li><span>✓</span> Chat y voz mientras la página está abierta</li>
+              <li><span>!</span> Necesita conexión con el servidor de Sirvienta</li>
+            </ul>
+            <a class="button button-outline platform-button" href="/app">Abrir Sirvienta web <span aria-hidden="true">↗</span></a>
+            <p class="platform-meta">En Safari: Compartir → Añadir a pantalla de inicio</p>
+          </article>
+        </div>
+        <p class="platform-caveat">
+          <strong>Nota para iPhone:</strong> esta es la versión web instalable, no una app nativa publicada en App Store.
+          iOS no permite que una web escuche continuamente ni active una palabra de voz con la pantalla bloqueada.
+          Para usar el micrófono en una publicación pública, el servidor debe usar HTTPS.
+        </p>
+      </section>
+
+      <section id="como-funciona" class="steps-section">
+        <div class="steps-intro">
+          <div class="eyebrow">SIN LETRA PEQUEÑA</div>
+          <h2>Lista en<br />tres pasos.</h2>
+          <p>Elige tu plataforma y sigue las instrucciones de tu dispositivo.</p>
+        </div>
+        <div class="step-list">
+          <article class="step">
+            <span class="step-number">01</span>
+            <div><h3>Elige tu versión</h3><p>Android tiene una app beta descargable. En iPhone, abre la web usando Safari.</p></div>
+          </article>
+          <article class="step">
+            <span class="step-number">02</span>
+            <div><h3>Instala o añade</h3><p>Android te pedirá confirmar la instalación del APK. En iPhone, toca Compartir y luego Añadir a pantalla de inicio.</p></div>
+          </article>
+          <article class="step">
+            <span class="step-number">03</span>
+            <div><h3>Da solo los permisos necesarios</h3><p>Activa el micrófono cuando quieras usar la voz. Puedes seguir usando el chat escribiendo.</p></div>
+          </article>
+        </div>
+      </section>
+
+      <section id="privacidad" class="privacy-section">
+        <div class="privacy-mark" aria-hidden="true">✳</div>
+        <div>
+          <div class="eyebrow">TRANSPARENCIA PRIMERO</div>
+          <h2>Que la confianza<br />también forme parte.</h2>
+          <p>
+            Android procesa varias funciones en el propio teléfono. La versión web necesita conectarse al servidor
+            de Sirvienta para responder. El micrófono solo se usa con permiso y la escucha continua de Android
+            muestra una notificación mientras está activa.
+          </p>
+          <a class="text-link" href="/app">Explorar la experiencia web <span aria-hidden="true">↗</span></a>
+        </div>
+      </section>
+
+      <section id="preguntas" class="faq-section">
+        <div class="eyebrow">PREGUNTAS FRECUENTES</div>
+        <h2>Antes de empezar.</h2>
+        <details>
+          <summary>¿Puedo instalarla desde App Store?</summary>
+          <p>Aún no hay una app nativa publicada para iPhone. Puedes abrir Sirvienta web en Safari y añadirla a la pantalla de inicio.</p>
+        </details>
+        <details>
+          <summary>¿La versión de iPhone funciona sin conexión?</summary>
+          <p>No. La versión web necesita conexión con un servidor de Sirvienta. La app Android beta incluye funciones locales.</p>
+        </details>
+        <details>
+          <summary>¿Qué necesito para usar la voz en iPhone?</summary>
+          <p>Abre Sirvienta desde Safari, permite el micrófono y mantén la página abierta. En una web pública, el servidor necesita HTTPS; no hay escucha continua en segundo plano.</p>
+        </details>
+        <details>
+          <summary>¿Por qué Android muestra una advertencia al instalar?</summary>
+          <p>El APK es una compilación beta de desarrollo distribuida fuera de Google Play. Instálala solo si confías en el origen y entiendes que todavía no es una versión final.</p>
+        </details>
+        <details>
+          <summary>¿La voz sigue activa cuando cierro la app?</summary>
+          <p>Android puede mantener la escucha mediante un servicio visible y una notificación, sujeto a las restricciones de batería del dispositivo. En iPhone, la versión web no escucha en segundo plano.</p>
+        </details>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <a class="wordmark footer-brand" href="/descargar"><span class="brand-mark" aria-hidden="true">S</span><span>SIRVIENTA</span></a>
+      <span>Una asistente personal, en construcción contigo.</span>
+      <a href="#plataformas">Volver arriba ↑</a>
+    </footer>
+    <script src="/static/download.js?v=2" defer></script>
+  </body>
+</html>

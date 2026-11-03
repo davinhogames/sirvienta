@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#080b12" />
+    <meta name="description" content="Asistente personal Sirvienta" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Sirvienta" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <link rel="manifest" href="/static/manifest.webmanifest" />
+    <link rel="icon" href="/static/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/static/apple-touch-icon.png" />
+    <title>SIRVIENTA</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <a class="brand" href="#inicio" aria-label="Sirvienta, inicio">SIRVIENTA</a>
+        <nav aria-label="Navegación principal">
+          <a class="nav active" href="#inicio" aria-current="location">Inicio</a>
+          <a class="nav" href="#voz">Voz</a>
+          <a class="nav" href="#conversacion">Conversación</a>
+          <a class="nav" href="#actividad">Actividad</a>
+        </nav>
+      </aside>
+
+      <main id="inicio" class="main-panel">
+        <header class="topbar">
+          <div>
+            <div class="label">STATUS</div>
+            <div id="statusText" class="status-online" role="status">ONLINE</div>
+          </div>
+          <div class="time-block">
+            <div id="clock">--:--</div>
+            <div id="date">--</div>
+          </div>
+        </header>
+
+        <section id="voz" class="orb-panel" aria-label="Estado de voz">
+          <div class="orb-core" id="orbCore">
+            <div class="orb-ring ring-a"></div>
+            <div class="orb-ring ring-b"></div>
+            <div class="orb-ring ring-c"></div>
+            <div class="orb-center">
+              <span>S</span>
+            </div>
+          </div>
+          <div class="state-label" id="stateLabel" aria-live="polite">EN ESPERA</div>
+        </section>
+
+        <section class="controls">
+          <button id="wakeButton" class="primary" type="button">Activar micrófono</button>
+          <button id="stopWakeButton" class="secondary" type="button" hidden>Detener escucha</button>
+          <button id="statusButton" class="secondary" type="button">Actualizar estado</button>
+        </section>
+
+        <section id="conversacion" class="chat-panel">
+          <div class="panel-header">
+            <span>Conversación</span>
+            <span class="panel-caption">Este dispositivo</span>
+          </div>
+          <div id="conversationHistory" class="conversation-history" role="log" aria-live="polite" aria-relevant="additions text">
+            <p class="conversation-empty">Tus mensajes aparecerán aquí.</p>
+          </div>
+        </section>
+      </main>
+
+      <aside class="right-panel">
+        <div class="widget">
+          <div class="widget-title">Comando</div>
+          <form id="assistantForm">
+            <label class="visually-hidden" for="messageInput">Escribe un comando</label>
+            <input id="messageInput" type="text" autocomplete="off" placeholder="Escribe un comando..." />
+            <button class="primary" type="submit">Enviar</button>
+          </form>
+        </div>
+
+        <div class="widget">
+          <div class="widget-title">Respuesta</div>
+          <div id="assistantReply" class="reply-box" role="status" aria-live="polite">El chat de texto está listo. Toca «Activar micrófono» para usar la voz.</div>
+          <div class="reply-controls">
+            <button id="voiceToggle" class="secondary" type="button" aria-pressed="true">Silenciar voz</button>
+            <button id="repeatReply" class="secondary" type="button" disabled>Repetir respuesta</button>
+          </div>
+        </div>
+
+        <section id="actividad" class="widget" aria-labelledby="activityTitle">
+          <div id="activityTitle" class="widget-title">Actividad reciente</div>
+          <div id="activityLogs" class="log-list" aria-live="polite">
+            <div class="log-item">Cargando actividad...</div>
+          </div>
+        </section>
+      </aside>
+    </div>
+
+    <script src="/static/app.js?v=13"></script>
+  </body>
+</html>
