@@ -34,6 +34,8 @@ jobs:
 
       - name: Configure Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          packages: "platform-tools"
 
       - name: Install Android build packages
         run: sdkmanager "platforms;android-35" "ndk;29.0.13113456" "cmake;3.31.6"
