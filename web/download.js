@@ -51,6 +51,7 @@ function preparePublicIphoneCard() {
     link.textContent = 'App para iPhone en preparación';
   });
 
+  const steps = document.querySelectorAll('.step-list .step p');
   steps[1].textContent = 'Android te pedirá confirmar la instalación del APK. La versión iPhone aún no se puede instalar.';
   steps[2].textContent = 'Android solicita los permisos necesarios para sus funciones de voz y recordatorios.';
 
