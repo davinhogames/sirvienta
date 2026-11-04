@@ -47,8 +47,8 @@ The APK produced locally is debug-signed. Android only accepts an in-place updat
 ### Public GitHub publishing setup
 
 1. Create a public GitHub repository, push this source to its `main` branch, and enable **Settings → Pages → Build and deployment → GitHub Actions**.
-2. Create and back up a permanent Android release keystore outside the repository. Add these repository Actions secrets: `ANDROID_SIGNING_KEYSTORE_BASE64` (the keystore's base64 contents), `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, and `ANDROID_KEY_PASSWORD`. Do not reuse the debug key, commit the keystore, or share its contents.
-3. Each push to `main` builds the ARM64 APK, publishes the APK and update manifest as the `sirvienta-latest` GitHub Release, and deploys the download site. Git LFS stores the bundled Qwen GGUF model; the workflow checks it out to compile Android. The static site does not contain the conversational backend, which remains unauthenticated and must not be exposed publicly.
+2. To publish Android APKs, create and back up a permanent release keystore outside the repository. Add these repository Actions secrets: `ANDROID_SIGNING_KEYSTORE_BASE64` (the keystore's base64 contents), `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, and `ANDROID_KEY_PASSWORD`. Do not reuse the debug key, commit the keystore, or share its contents.
+3. Each push to `main` deploys the download site. When all four Android signing secrets are configured, it also builds the ARM64 APK and publishes it with the update manifest as the `sirvienta-latest` GitHub Release. Until then, the page reports that no APK is published. Git LFS stores the bundled Qwen GGUF model; the workflow checks it out to compile Android. The static site does not contain the conversational backend, which remains unauthenticated and must not be exposed publicly.
 
 The public page URL will be `https://<owner>.github.io/<repository>/`. The model's upstream Qwen2.5-0.5B-Instruct release is marked Apache-2.0; its attribution is included in `android/app/src/main/assets/THIRD_PARTY_NOTICES.txt`.
 

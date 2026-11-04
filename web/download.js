@@ -1,7 +1,17 @@
 const androidDownload = document.getElementById('androidDownload');
 const androidMeta = document.getElementById('androidMeta');
 const downloadNotice = document.getElementById('downloadNotice');
+const androidAvailability = document.querySelector('.android-card .availability');
 const publicSite = window.SIRVIENTA_PUBLIC_SITE === true;
+
+function markAndroidDownloadUnavailable(message) {
+  androidAvailability.innerHTML = '<i></i> DESCARGA NO DISPONIBLE';
+  androidDownload.setAttribute('aria-disabled', 'true');
+  androidDownload.removeAttribute('href');
+  androidDownload.classList.add('is-unavailable');
+  androidDownload.textContent = 'APK no disponible todavía';
+  androidMeta.textContent = message;
+}
 
 function preparePublicIphoneCard() {
   if (!publicSite) return;
@@ -75,28 +85,30 @@ async function updateDownloadAvailability() {
     const android = manifestUrl ? release : release.android;
 
     if (!android.available) {
-      androidDownload.setAttribute('aria-disabled', 'true');
-      androidDownload.removeAttribute('href');
-      androidDownload.classList.add('is-unavailable');
-      androidDownload.textContent = 'APK temporalmente no disponible';
-      androidMeta.textContent = 'La versión Android no está publicada en este servidor.';
+      androidAvailability.innerHTML = '<i></i> PRÓXIMAMENTE';
+      markAndroidDownloadUnavailable('La beta Android todavía no está publicada.');
       downloadNotice.hidden = false;
-      downloadNotice.textContent = 'Vuelve a intentarlo más tarde.';
+      downloadNotice.textContent = 'Vuelve a consultar esta página más tarde.';
       return;
     }
 
-    if (android.download_url) {
-      androidDownload.href = android.download_url;
+    if (!android.download_url) {
+      throw new Error('La versión Android no contiene un enlace de descarga.');
     }
+    androidDownload.href = android.download_url;
+    androidDownload.removeAttribute('aria-disabled');
+    androidDownload.classList.remove('is-unavailable');
+    androidDownload.innerHTML = 'Descargar APK <span aria-hidden="true">↓</span>';
+    androidAvailability.innerHTML = '<i></i> BETA DISPONIBLE';
     const size = formatFileSize(android.size_bytes);
     const version = android.version_name ? `v${android.version_name} · ` : '';
     const kind = android.kind === 'release' ? 'APK beta firmada' : 'APK beta de desarrollo';
     androidMeta.textContent = `${version}${kind} · ${android.architecture}${size ? ` · ${size}` : ''}`;
     downloadNotice.hidden = true;
   } catch (error) {
-    androidMeta.textContent = 'APK beta · Android ARM64';
+    markAndroidDownloadUnavailable('No se pudo confirmar la disponibilidad de la beta.');
     downloadNotice.hidden = false;
-    downloadNotice.textContent = 'No se pudo comprobar el estado de la descarga. Prueba el botón de nuevo.';
+    downloadNotice.textContent = 'Comprueba tu conexión e inténtalo de nuevo más tarde.';
   }
 }
 

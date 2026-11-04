@@ -26,21 +26,7 @@ jobs:
         with:
           lfs: true
 
-      - name: Configure Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "17"
-
-      - name: Configure Android SDK
-        uses: android-actions/setup-android@v3
-        with:
-          packages: "platform-tools"
-
-      - name: Install Android build packages
-        run: sdkmanager "platforms;android-35" "ndk;29.0.13113456" "cmake;3.31.6"
-
-      - name: Check release signing secrets
+      - name: Check release signing configuration
         shell: bash
         env:
           ANDROID_SIGNING_KEYSTORE_BASE64: ${{ secrets.ANDROID_SIGNING_KEYSTORE_BASE64 }}
@@ -48,12 +34,35 @@ jobs:
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          : "${ANDROID_SIGNING_KEYSTORE_BASE64:?Set the Android release-signing secrets before publishing.}"
-          : "${ANDROID_KEYSTORE_PASSWORD:?Set the Android release-signing secrets before publishing.}"
-          : "${ANDROID_KEY_ALIAS:?Set the Android release-signing secrets before publishing.}"
-          : "${ANDROID_KEY_PASSWORD:?Set the Android release-signing secrets before publishing.}"
+          if [[ -n "$ANDROID_SIGNING_KEYSTORE_BASE64" \
+            && -n "$ANDROID_KEYSTORE_PASSWORD" \
+            && -n "$ANDROID_KEY_ALIAS" \
+            && -n "$ANDROID_KEY_PASSWORD" ]]; then
+            echo "SIRVIENTA_RELEASE_SIGNING_READY=true" >> "$GITHUB_ENV"
+          else
+            echo "SIRVIENTA_RELEASE_SIGNING_READY=false" >> "$GITHUB_ENV"
+            echo "Release signing is not configured; publishing the download page without an APK."
+          fi
+
+      - name: Configure Java
+        uses: actions/setup-java@v4
+        if: env.SIRVIENTA_RELEASE_SIGNING_READY == 'true'
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Configure Android SDK
+        uses: android-actions/setup-android@v3
+        if: env.SIRVIENTA_RELEASE_SIGNING_READY == 'true'
+        with:
+          packages: "platform-tools"
+
+      - name: Install Android build packages
+        if: env.SIRVIENTA_RELEASE_SIGNING_READY == 'true'
+        run: sdkmanager "platforms;android-35" "ndk;29.0.13113456" "cmake;3.31.6"
 
       - name: Prepare release signing key
+        if: env.SIRVIENTA_RELEASE_SIGNING_READY == 'true'
         shell: bash
         env:
           ANDROID_SIGNING_KEYSTORE_BASE64: ${{ secrets.ANDROID_SIGNING_KEYSTORE_BASE64 }}
@@ -70,10 +79,12 @@ jobs:
           } >> "$GITHUB_ENV"
 
       - name: Set Android version
+        if: env.SIRVIENTA_RELEASE_SIGNING_READY == 'true'
         shell: bash
         run: echo "SIRVIENTA_VERSION_CODE=$((GITHUB_RUN_NUMBER + 2))" >> "$GITHUB_ENV"
 
       - name: Build signed Android APK
+        if: env.SIRVIENTA_RELEASE_SIGNING_READY == 'true'
         working-directory: android
         env:
           GITHUB_REPOSITORY: ${{ github.repository }}
@@ -85,6 +96,7 @@ jobs:
             "-PsirvientaUpdateManifestUrl=https://github.com/$GITHUB_REPOSITORY/releases/latest/download/latest.json"
 
       - name: Create release manifest
+        if: env.SIRVIENTA_RELEASE_SIGNING_READY == 'true'
         env:
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_RUN_NUMBER: ${{ github.run_number }}
@@ -124,7 +136,17 @@ jobs:
           )
           PY
 
+      - name: Create unavailable release manifest
+        if: env.SIRVIENTA_RELEASE_SIGNING_READY != 'true'
+        env:
+          RUNNER_TEMP: ${{ runner.temp }}
+        run: |
+          printf '%s\n' \
+            '{"available":false,"version_code":null,"version_name":null,"architecture":"arm64-v8a","kind":"release","size_bytes":null,"download_url":null}' \
+            > "$RUNNER_TEMP/latest.json"
+
       - name: Replace latest Android beta release
+        if: env.SIRVIENTA_RELEASE_SIGNING_READY == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           GITHUB_REPOSITORY: ${{ github.repository }}

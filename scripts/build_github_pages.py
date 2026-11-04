@@ -9,8 +9,8 @@ from pathlib import Path
 
 def build_site(web_dir: Path, release_manifest: Path, output_dir: Path) -> None:
     manifest = json.loads(release_manifest.read_text(encoding="utf-8"))
-    if not manifest.get("available") or not manifest.get("download_url"):
-        raise ValueError("The release manifest must describe an available Android APK.")
+    if manifest.get("available") and not manifest.get("download_url"):
+        raise ValueError("An available Android release must include its download URL.")
 
     output_dir.mkdir(parents=True, exist_ok=True)
     for asset_name in ("download.css", "download.js", "icon.svg", "apple-touch-icon.png"):
@@ -18,17 +18,20 @@ def build_site(web_dir: Path, release_manifest: Path, output_dir: Path) -> None:
 
     html = (web_dir / "download.html").read_text(encoding="utf-8")
     html = re.sub(
-        r'^\s*<meta name="apple-mobile-web-app-[^"]+"\s+content="[^"]+"\s*/>\s*',
+        r'^[ \t]*<meta name="apple-mobile-web-app-[^"]+"\s+content="[^"]+"\s*/>[ \t]*\r?\n',
         "",
         html,
         flags=re.MULTILINE,
     )
-    html = re.sub(r'^\s*<link rel="manifest"[^>]+/>\s*', "", html, flags=re.MULTILINE)
+    html = re.sub(r'^[ \t]*<link rel="manifest"[^>]+/>[ \t]*\r?\n', "", html, flags=re.MULTILINE)
     html = html.replace('href="/descargar"', 'href="#inicio"')
     html = html.replace('href="/app"', 'href="#iphone"')
-    html = html.replace('href="/downloads/android"', 'href="#plataformas"')
+    html = html.replace(
+        'class="button button-light platform-button"',
+        'class="button button-light platform-button is-unavailable"',
+    )
+    html = html.replace('href="/downloads/android"', 'aria-disabled="true"')
     html = html.replace("/static/", "")
-    html = html.replace("<main>", '<main id="inicio">')
     html = html.replace(
         '    <script src="download.js?v=2" defer></script>',
         '    <script>window.SIRVIENTA_PUBLIC_SITE = true; '
