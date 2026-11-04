@@ -33,10 +33,10 @@ def build_site(web_dir: Path, release_manifest: Path, output_dir: Path) -> None:
     html = html.replace('href="/downloads/android"', 'aria-disabled="true"')
     html = html.replace("/static/", "")
     html = html.replace(
-        '    <script src="download.js?v=3" defer></script>',
+        '    <script src="download.js?v=4" defer></script>',
         '    <script>window.SIRVIENTA_PUBLIC_SITE = true; '
         'window.SIRVIENTA_RELEASE_MANIFEST_URL = "latest.json";</script>\n'
-        '    <script src="download.js?v=3" defer></script>',
+        '    <script src="download.js?v=4" defer></script>',
     )
     (output_dir / "index.html").write_text(html, encoding="utf-8")
     shutil.copy2(release_manifest, output_dir / "latest.json")

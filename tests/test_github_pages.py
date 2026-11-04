@@ -44,7 +44,7 @@ class GitHubPagesBuildTests(unittest.TestCase):
             html = (output_path / "index.html").read_text(encoding="utf-8")
             self.assertIn('href="#inicio"', html)
             self.assertIn('window.SIRVIENTA_RELEASE_MANIFEST_URL = "latest.json"', html)
-            self.assertIn('src="download.js?v=3"', html)
+            self.assertIn('src="download.js?v=4"', html)
             self.assertIn('aria-disabled="true"', html)
             self.assertIn('https://github.com/davinhogames/sirvienta', html)
             self.assertNotRegex(html, r'<a id="androidDownload"[^>]+href=')
