@@ -4,8 +4,8 @@ const downloadNotice = document.getElementById('downloadNotice');
 const androidAvailability = document.querySelector('.android-card .availability');
 const publicSite = window.SIRVIENTA_PUBLIC_SITE === true;
 
-function markAndroidDownloadUnavailable(message) {
-  androidAvailability.innerHTML = '<i></i> DESCARGA NO DISPONIBLE';
+function markAndroidDownloadUnavailable(message, label = 'DESCARGA NO DISPONIBLE') {
+  androidAvailability.innerHTML = `<i></i> ${label}`;
   androidDownload.setAttribute('aria-disabled', 'true');
   androidDownload.removeAttribute('href');
   androidDownload.classList.add('is-unavailable');
@@ -51,8 +51,6 @@ function preparePublicIphoneCard() {
     link.textContent = 'App para iPhone en preparación';
   });
 
-  const steps = document.querySelectorAll('.step-list .step p');
-  steps[0].textContent = 'La beta descargable de Sirvienta está disponible para Android ARM64.';
   steps[1].textContent = 'Android te pedirá confirmar la instalación del APK. La versión iPhone aún no se puede instalar.';
   steps[2].textContent = 'Android solicita los permisos necesarios para sus funciones de voz y recordatorios.';
 
@@ -71,6 +69,32 @@ function preparePublicIphoneCard() {
     + 'no se ofrece aquí un asistente web conectado ni una app iPhone.';
 }
 
+function updatePublicAndroidCopy(available) {
+  if (!publicSite) return;
+
+  document.querySelector('.hero-description').textContent = available
+    ? 'Una asistente de voz que te ayuda a pensar, recordar y poner tus ideas en marcha. '
+      + 'La beta Android está disponible para descargar; la app nativa para iPhone sigue en desarrollo.'
+    : 'Una asistente de voz que te ayuda a pensar, recordar y poner tus ideas en marcha. '
+      + 'La beta Android aún no está publicada para descarga; la app nativa para iPhone sigue en desarrollo.';
+
+  const firstStep = document.querySelector('.step-list .step p');
+  firstStep.textContent = available
+    ? 'Descarga la beta Android para ARM64 desde esta página. La app nativa para iPhone sigue en desarrollo.'
+    : 'La beta Android todavía no se puede descargar desde esta página. La app nativa para iPhone sigue en desarrollo.';
+
+  const androidFaq = document.querySelector('#preguntas details:nth-of-type(4)');
+  if (available) {
+    androidFaq.querySelector('summary').textContent = '¿Por qué Android muestra una advertencia al instalar?';
+    androidFaq.querySelector('p').textContent =
+      'El APK es una compilación beta distribuida fuera de Google Play. Instálala solo si confías en el origen y entiendes que todavía no es una versión final.';
+  } else {
+    androidFaq.querySelector('summary').textContent = '¿Ya puedo descargar la beta de Android?';
+    androidFaq.querySelector('p').textContent =
+      'Todavía no. La página ya está publicada, pero el APK llegará cuando se configure la firma segura de Android y se publique una versión para descargar.';
+  }
+}
+
 function formatFileSize(bytes) {
   if (!Number.isFinite(bytes) || bytes <= 0) return '';
   return `${(bytes / (1024 ** 3)).toFixed(2)} GB`;
@@ -85,8 +109,8 @@ async function updateDownloadAvailability() {
     const android = manifestUrl ? release : release.android;
 
     if (!android.available) {
-      androidAvailability.innerHTML = '<i></i> PRÓXIMAMENTE';
-      markAndroidDownloadUnavailable('La beta Android todavía no está publicada.');
+      markAndroidDownloadUnavailable('La beta Android todavía no está publicada.', 'PRÓXIMAMENTE');
+      updatePublicAndroidCopy(false);
       downloadNotice.hidden = false;
       downloadNotice.textContent = 'Vuelve a consultar esta página más tarde.';
       return;
@@ -100,13 +124,15 @@ async function updateDownloadAvailability() {
     androidDownload.classList.remove('is-unavailable');
     androidDownload.innerHTML = 'Descargar APK <span aria-hidden="true">↓</span>';
     androidAvailability.innerHTML = '<i></i> BETA DISPONIBLE';
+    updatePublicAndroidCopy(true);
     const size = formatFileSize(android.size_bytes);
     const version = android.version_name ? `v${android.version_name} · ` : '';
     const kind = android.kind === 'release' ? 'APK beta firmada' : 'APK beta de desarrollo';
     androidMeta.textContent = `${version}${kind} · ${android.architecture}${size ? ` · ${size}` : ''}`;
     downloadNotice.hidden = true;
   } catch (error) {
-    markAndroidDownloadUnavailable('No se pudo confirmar la disponibilidad de la beta.');
+    markAndroidDownloadUnavailable('No se pudo confirmar la disponibilidad de la beta.', 'ESTADO DESCONOCIDO');
+    updatePublicAndroidCopy(false);
     downloadNotice.hidden = false;
     downloadNotice.textContent = 'Comprueba tu conexión e inténtalo de nuevo más tarde.';
   }
