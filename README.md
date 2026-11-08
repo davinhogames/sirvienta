@@ -65,6 +65,8 @@ If the page does not load, check that the server says it is listening on `0.0.0.
 - When enabled, recent saved memories are supplied to Ollama as personal context
 - Intent parsing for common commands: open app, search web, time/date, reminders, timers, memory query, status requests
 - Windows app launching by voice or chat, with common Spanish aliases and installed Start Menu shortcuts (for example, `abre la calculadora`, `abre Chrome`, or `abre el explorador`)
+- Spotify song requests open a matching Spotify search; choose a result and start playback in the signed-in Spotify app or web player
+- WhatsApp messages open a prefilled draft; choose the intended contact, review the message, and send it in WhatsApp
 - Risk-based permission checks for actions
 - SQLite-backed memory and reminders
 - FastAPI endpoints for status and assistant processing
@@ -72,9 +74,13 @@ If the page does not load, check that the server says it is listening on `0.0.0.
 
 ## Mobile voice limitations
 
-The web app does not request microphone access until you tap **Activar micrófono**. Browser speech recognition may use an online provider; when it is unavailable, Sirvienta can use the local Vosk recognizer on the computer running the server. Neural web replies use the configured `TTS_VOICE` (default: `es-ES-ElviraNeural`) and require network access; the browser's own Spanish voice is a fallback. Microphone use from a phone generally requires HTTPS. The web page must remain open and active, and cannot listen over other apps or while the screen is locked. Use **Detener escucha** or say **“adiós”** to stop listening.
+The web app starts listening when the dashboard opens. The browser asks for microphone permission the first time; if it blocks automatic startup, use **Reintentar**. Say **“Sirvienta”** to start a conversation and say it again to return to wake-word standby. **Apagar** stops microphone listening completely. Browser speech recognition may use an online provider; when it is unavailable, Sirvienta can use the local Vosk recognizer on the computer running the server. Neural web replies use the configured `TTS_VOICE` (default: the feminine Spanish `es-ES-ElviraNeural`) and require network access; the browser's own Spanish voice is a fallback. Microphone use from a phone generally requires HTTPS. The web page must remain open and active, and cannot listen over other apps or while the screen is locked.
+
+Spotify requests open search results rather than starting playback automatically: Spotify requires a signed-in account and playback selection, and this web app does not have Spotify account authorization. WhatsApp opens a draft for the user to select the contact and confirm sending; Sirvienta does not send messages without that review.
 
 The native Android app is a separate, offline-first experience: its Qwen chat model, Vosk Spanish speech recognition, and Piper/Sherpa Spanish speech output are bundled with the app. It does not need the Python server, Ollama, or Internet access for those local features. The app copies the Vosk model and pronunciation data (about 78 MB combined) to private storage on first use; allow time and free storage for this step. The APK includes large models and currently targets `arm64-v8a`, so it is much larger than an ordinary app. The wake word is detected from Vosk's recognized text rather than a dedicated acoustic wake-word model, so recognition can vary with noise, pronunciation, and battery constraints.
+
+The Android beta 1.1 refreshes the in-app voice dashboard, conversation and settings layout while retaining local operation. The app version is shown in its voice panel; signed beta releases are built and published by the `Publish Sirvienta` GitHub Actions workflow when the required Android signing secrets are configured.
 
 Commands to open apps from Android are carried out on the phone; say **“abre [nombre de la app]”**. From the web app or desktop, app launches happen on the computer hosting Sirvienta. On Windows, supported examples include Calculadora, Bloc de notas, Explorador, Chrome, Edge, Firefox, VS Code, and Spotify.
 

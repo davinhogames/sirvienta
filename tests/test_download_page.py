@@ -33,10 +33,22 @@ class DownloadPageTests(unittest.TestCase):
         self.assertIn("href=\"/downloads/android\"", html)
         self.assertIn("href=\"/app\"", html)
 
-    def test_assistant_dashboard_remains_available(self) -> None:
+    def test_assistant_dashboard_starts_voice_and_keeps_mic_controls(self) -> None:
         html = asyncio.run(self.endpoints["web_app"]())
+        app_js = (
+            Path(__file__).resolve().parents[1] / "web" / "app.js"
+        ).read_text(encoding="utf-8")
+        styles = (
+            Path(__file__).resolve().parents[1] / "web" / "styles.css"
+        ).read_text(encoding="utf-8")
 
-        self.assertIn("Activar micrófono", html)
+        self.assertIn("Escucha manos libres", html)
+        self.assertIn("Reintentar", html)
+        self.assertIn("Apagar", html)
+        self.assertIn("startVoiceListener();", app_js)
+        self.assertIn("vuelve a decirlo para quedar en espera", app_js)
+        self.assertIn("classList.toggle('voice-active', active)", app_js)
+        self.assertIn(".voice-active .orb-core", styles)
 
     def test_download_metadata_matches_built_apk(self) -> None:
         download_info = asyncio.run(self.endpoints["downloads"]())

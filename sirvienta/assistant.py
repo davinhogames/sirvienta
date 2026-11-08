@@ -4,6 +4,7 @@ import re
 import time
 import unicodedata
 from typing import Any
+from urllib.parse import quote
 
 from .ai import AIProviderError, OllamaProvider
 from .config import AppConfig
@@ -93,6 +94,43 @@ class Assistant:
                     "label": "Sirvienta",
                 },
             }
+        if intent["action"] in {"spotify_search", "whatsapp_message"}:
+            if intent["action"] == "spotify_search":
+                query = intent["query"]
+                response = (
+                    f"Busco «{query}» en Spotify. Si aparece más de una versión, "
+                    "elige la canción y pulsa reproducir."
+                )
+                external_action = {
+                    "url": f"https://open.spotify.com/search/{quote(query)}",
+                    "label": "Buscar en Spotify",
+                }
+            else:
+                recipient = intent["recipient"]
+                response = (
+                    f"He preparado el mensaje para {recipient}. En WhatsApp, "
+                    "elige el contacto correcto, revisa el texto y pulsa Enviar."
+                )
+                external_action = {
+                    "url": f"https://wa.me/?text={quote(intent['message'])}",
+                    "label": "Revisar y abrir WhatsApp",
+                }
+            self.database.add_chat_message(conversation_id, "user", text)
+            self.database.add_chat_message(conversation_id, "assistant", response)
+            self.database.add_activity_log(
+                text,
+                intent["action"],
+                {"target": intent.get("query", intent.get("recipient"))},
+                response,
+                time.perf_counter() - started,
+                None,
+            )
+            return {
+                "text": response,
+                "status": "pending",
+                "actions": [],
+                "external_action": external_action,
+            }
         actions = []
         tool_result = None
 
@@ -179,6 +217,52 @@ class Assistant:
             character for character in unicodedata.normalize("NFKD", normalized)
             if not unicodedata.combining(character)
         )
+        spotify_prefix = re.match(
+            r"^(?:m[eé]tete|entra|abre|ve)\s+(?:en|a)\s+spotify\s+(?:y\s+)?"
+            r"(?:reproduce|reproducir|pon(?:me)?|busca)\s+"
+            r"(?:(?:la\s+)?canci[oó]n\s+)?(.+)$",
+            text,
+            re.IGNORECASE,
+        )
+        if spotify_prefix:
+            query = re.sub(r"\s+(?:en|por)\s+spotify$", "", spotify_prefix.group(1).strip(), flags=re.IGNORECASE)
+            if query:
+                return {"action": "spotify_search", "query": query}
+        spotify_suffix = re.match(
+            r"^(?:reproduce|reproducir|pon(?:me)?|busca)\s+"
+            r"(?:(?:la\s+)?canci[oó]n\s+)?(.+?)\s+(?:en|por)\s+spotify$",
+            text,
+            re.IGNORECASE,
+        )
+        if spotify_suffix:
+            return {"action": "spotify_search", "query": spotify_suffix.group(1).strip()}
+        whatsapp_match = re.match(
+            r"^(?:por favor,?\s*)?(?:escrib(e|ele)|mand(?:a|ale)|env[ií]a(?:le)?)\s+"
+            r"(?:un\s+)?whats?app\s+(?:a|para)\s+(.+?)\s+"
+            r"(?:diciendo(?:le)?\s+que|con\s+el\s+mensaje(?:\s+de)?|que\s+diga)\s+(.+)$",
+            text,
+            re.IGNORECASE,
+        )
+        if not whatsapp_match:
+            whatsapp_match = re.match(
+                r"^(?:por favor,?\s*)?(?:escr[ií]bele|manda(?:le)?|env[ií]ale)\s+"
+                r"(?:a|para)\s+(.+?)\s+(?:un\s+)?whats?app\s+"
+                r"(?:diciendo(?:le)?\s+que|con\s+el\s+mensaje(?:\s+de)?|que\s+diga)\s+(.+)$",
+                text,
+                re.IGNORECASE,
+            )
+            if whatsapp_match:
+                return {
+                    "action": "whatsapp_message",
+                    "recipient": whatsapp_match.group(1).strip(),
+                    "message": whatsapp_match.group(2).strip(),
+                }
+        if whatsapp_match:
+            return {
+                "action": "whatsapp_message",
+                "recipient": whatsapp_match.group(2).strip(),
+                "message": whatsapp_match.group(3).strip(),
+            }
         if re.search(
             r"\b(?:pon(?:me)?|programa(?:me)?|crea|activa|establece)\s+(?:una\s+)?alarma\b",
             unaccented,

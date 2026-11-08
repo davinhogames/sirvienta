@@ -63,6 +63,52 @@ class OllamaProviderTests(unittest.TestCase):
 
 
 class ChatHistoryTests(unittest.TestCase):
+    def test_spotify_request_returns_a_search_link_without_claiming_playback(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            assistant = Assistant(AppConfig(), Database(f"{directory}/chat.db"))
+
+            result = assistant.handle_message(
+                "Métete en Spotify y reproduce la canción Bohemian Rhapsody",
+                "desktop-session",
+            )
+
+        self.assertEqual(result["status"], "pending")
+        self.assertIn("Bohemian Rhapsody", result["text"])
+        self.assertEqual(
+            result["external_action"],
+            {
+                "url": "https://open.spotify.com/search/Bohemian%20Rhapsody",
+                "label": "Buscar en Spotify",
+            },
+        )
+
+    def test_whatsapp_request_prefills_message_but_leaves_sending_to_user(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            assistant = Assistant(AppConfig(), Database(f"{directory}/chat.db"))
+
+            result = assistant.handle_message(
+                "Escríbele a papá un WhatsApp diciendo que llego tarde",
+                "desktop-session",
+            )
+
+        self.assertEqual(result["status"], "pending")
+        self.assertIn("revisa el texto y pulsa Enviar", result["text"])
+        self.assertEqual(
+            result["external_action"],
+            {
+                "url": "https://wa.me/?text=llego%20tarde",
+                "label": "Revisar y abrir WhatsApp",
+            },
+        )
+
+    def test_unrelated_spotify_mention_does_not_trigger_a_search_action(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            assistant = Assistant(AppConfig(), Database(f"{directory}/chat.db"))
+
+            intent = assistant._infer_intent("Me gusta Spotify")
+
+        self.assertEqual(intent, {"action": "chat", "target": "Me gusta Spotify"})
+
     def test_open_app_command_launches_a_windows_app_alias(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             assistant = Assistant(AppConfig(), Database(f"{directory}/chat.db"))

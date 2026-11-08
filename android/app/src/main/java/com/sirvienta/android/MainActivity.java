@@ -10,6 +10,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -60,6 +61,10 @@ public class MainActivity extends Activity {
     private static final int COLOR_TEXT = 0xfff4f5f7;
     private static final int COLOR_MUTED = 0xffa8b0bd;
     private static final int COLOR_SURFACE = 0xff171c25;
+    private static final int COLOR_BACKGROUND = 0xff0a0911;
+    private static final int COLOR_PANEL = 0xff14121d;
+    private static final int COLOR_PINK = 0xffff67c8;
+    private static final int COLOR_CYAN = 0xff69e5ed;
 
     private final ExecutorService networkWorker = Executors.newSingleThreadExecutor();
     private final ExecutorService updateWorker = Executors.newSingleThreadExecutor();
@@ -78,6 +83,7 @@ public class MainActivity extends Activity {
     private CheckBox autoListening;
     private Button gameUsageButton;
     private Button avatarOverlayButton;
+    private AlertDialog settingsDialog;
     private boolean assistantStartRequested;
     private boolean commandRequestedAfterPermission;
     private boolean listeningRequestedAfterPermission;
@@ -109,46 +115,83 @@ public class MainActivity extends Activity {
     private void buildInterface(SharedPreferences preferences) {
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setBackgroundColor(0xff0b0e13);
-        root.setPadding(dp(18), dp(16), dp(18), dp(12));
+        root.setBackgroundColor(COLOR_BACKGROUND);
+        root.setPadding(dp(16), dp(12), dp(16), dp(10));
+        getWindow().setStatusBarColor(COLOR_BACKGROUND);
+        getWindow().setNavigationBarColor(COLOR_BACKGROUND);
 
+        LinearLayout header = new LinearLayout(this);
+        header.setGravity(Gravity.CENTER_VERTICAL);
         TextView title = new TextView(this);
         title.setText("SIRVIENTA");
         title.setTextColor(COLOR_TEXT);
-        title.setTextSize(23);
+        title.setTextSize(21);
+        title.setLetterSpacing(0.1f);
         title.setTypeface(null, Typeface.BOLD);
-        root.addView(title, matchWrap());
+        header.addView(title, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        Button settingsButton = button("AJUSTES");
+        settingsButton.setTextSize(11);
+        header.addView(settingsButton, wrapWrap());
+        root.addView(header, matchWrap());
 
         connectionStatus = new TextView(this);
-        connectionStatus.setText("Preparando la IA local…");
-        connectionStatus.setTextColor(COLOR_MUTED);
-        connectionStatus.setPadding(0, dp(4), 0, dp(12));
+        connectionStatus.setText("●  PREPARANDO IA LOCAL");
+        connectionStatus.setTextColor(COLOR_CYAN);
+        connectionStatus.setTextSize(10);
+        connectionStatus.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
+        connectionStatus.setPadding(0, dp(2), 0, dp(10));
         root.addView(connectionStatus, matchWrap());
-
-        TextView localMode = new TextView(this);
-        localMode.setText("IA, reconocimiento y voz en español incluidos · no requiere servidor ni conexión");
-        localMode.setTextColor(COLOR_MUTED);
-        localMode.setPadding(0, dp(4), 0, dp(8));
-        root.addView(localMode, matchWrap());
 
         LinearLayout voiceControls = new LinearLayout(this);
         voiceControls.setOrientation(LinearLayout.VERTICAL);
-        voiceControls.setPadding(0, dp(8), 0, dp(4));
+        voiceControls.setPadding(dp(15), dp(13), dp(15), dp(13));
+        voiceControls.setBackground(roundedBackground(COLOR_PANEL, 0xff343044, 20));
+        LinearLayout settingsContent = new LinearLayout(this);
+        settingsContent.setOrientation(LinearLayout.VERTICAL);
+        settingsContent.setPadding(dp(16), dp(12), dp(16), dp(12));
+        settingsContent.setBackground(roundedBackground(COLOR_PANEL, 0xff343044, 18));
+
+        TextView heroKicker = new TextView(this);
+        heroKicker.setText("SISTEMA DE VOZ  /  VERSION " + BuildConfig.VERSION_NAME);
+        heroKicker.setTextColor(COLOR_CYAN);
+        heroKicker.setTextSize(10);
+        heroKicker.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
+        voiceControls.addView(heroKicker, matchWrap());
+
+        TextView heroTitle = new TextView(this);
+        heroTitle.setText("Tu asistente.\nA tu manera.");
+        heroTitle.setTextColor(COLOR_TEXT);
+        heroTitle.setTextSize(25);
+        heroTitle.setTypeface(null, Typeface.BOLD);
+        heroTitle.setPadding(0, dp(8), 0, dp(3));
+        voiceControls.addView(heroTitle, matchWrap());
+
+        TextView localMode = new TextView(this);
+        localMode.setText("IA, voz y reconocimiento en español · funciona sin conexión");
+        localMode.setTextColor(COLOR_MUTED);
+        localMode.setTextSize(12);
+        localMode.setPadding(0, 0, 0, dp(9));
+        voiceControls.addView(localMode, matchWrap());
 
         listeningStatus = new TextView(this);
-        listeningStatus.setTextColor(COLOR_MUTED);
-        listeningStatus.setPadding(0, dp(3), 0, dp(5));
+        listeningStatus.setTextColor(COLOR_CYAN);
+        listeningStatus.setTextSize(11);
+        listeningStatus.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
+        listeningStatus.setPadding(0, dp(5), 0, dp(8));
         voiceControls.addView(listeningStatus, matchWrap());
 
         LinearLayout voiceButtons = new LinearLayout(this);
         voiceButtons.setOrientation(LinearLayout.HORIZONTAL);
-        listenButton = button("Reanudar escucha");
+        listenButton = button("ACTIVAR ESCUCHA");
         listenButton.setOnClickListener(view -> startListening());
         voiceButtons.addView(listenButton, weightedButton());
-        Button stopButton = button("Detener");
+        Button stopButton = button("APAGAR");
         stopButton.setOnClickListener(view -> stopListening());
         voiceButtons.addView(stopButton, weightedButton());
-        voiceControls.addView(voiceButtons, matchWrap());
+        root.addView(voiceControls, matchWrap());
+        LinearLayout.LayoutParams voiceButtonsParams = matchWrap();
+        voiceButtonsParams.setMargins(0, dp(8), 0, dp(7));
+        root.addView(voiceButtons, voiceButtonsParams);
 
         LinearLayout assistantButtons = new LinearLayout(this);
         assistantButtons.setOrientation(LinearLayout.HORIZONTAL);
@@ -158,58 +201,64 @@ public class MainActivity extends Activity {
         Button assistantButton = button("Asistente Android");
         assistantButton.setOnClickListener(view -> requestAssistantRole());
         assistantButtons.addView(assistantButton, weightedButton());
-        voiceControls.addView(assistantButtons, matchWrap());
+        settingsContent.addView(assistantButtons, matchWrap());
 
         speakReplies = new CheckBox(this);
         speakReplies.setText("Leer las respuestas en voz alta");
         speakReplies.setTextColor(COLOR_TEXT);
+        speakReplies.setButtonTintList(android.content.res.ColorStateList.valueOf(COLOR_PINK));
         speakReplies.setChecked(preferences.getBoolean(PREF_SPEAK_REPLIES, true));
         speakReplies.setOnCheckedChangeListener((button, checked) ->
                 getSharedPreferences(PREFS, MODE_PRIVATE)
                         .edit()
                         .putBoolean(PREF_SPEAK_REPLIES, checked)
                         .apply());
-        voiceControls.addView(speakReplies, matchWrap());
+        settingsContent.addView(speakReplies, matchWrap());
         autoListening = new CheckBox(this);
         autoListening.setText("Iniciar la escucha automáticamente al abrir");
         autoListening.setTextColor(COLOR_TEXT);
+        autoListening.setButtonTintList(android.content.res.ColorStateList.valueOf(COLOR_PINK));
         autoListening.setChecked(preferences.getBoolean(PREF_AUTO_LISTENING, true));
         autoListening.setOnCheckedChangeListener((button, checked) ->
                 getSharedPreferences(PREFS, MODE_PRIVATE)
                         .edit()
                         .putBoolean(PREF_AUTO_LISTENING, checked)
                         .apply());
-        voiceControls.addView(autoListening, matchWrap());
+        settingsContent.addView(autoListening, matchWrap());
         gameUsageButton = button("Permitir avisos de juegos");
         gameUsageButton.setOnClickListener(view -> openGameUsageSettings());
-        voiceControls.addView(gameUsageButton, matchWrap());
+        settingsContent.addView(gameUsageButton, matchWrap());
         avatarOverlayButton = button("Permitir avatar flotante");
         avatarOverlayButton.setOnClickListener(view -> openAvatarOverlaySettings());
-        voiceControls.addView(avatarOverlayButton, matchWrap());
-        root.addView(voiceControls, matchWrap());
+        settingsContent.addView(avatarOverlayButton, matchWrap());
 
         conversationScroll = new ScrollView(this);
         conversationScroll.setFillViewport(true);
-        conversationScroll.setBackgroundColor(COLOR_SURFACE);
-        conversationScroll.setPadding(dp(10), dp(10), dp(10), dp(10));
+        conversationScroll.setBackground(roundedBackground(COLOR_SURFACE, 0xff282533, 18));
+        conversationScroll.setPadding(dp(10), dp(9), dp(10), dp(9));
         conversation = new LinearLayout(this);
         conversation.setOrientation(LinearLayout.VERTICAL);
         conversationScroll.addView(conversation);
+        LinearLayout.LayoutParams conversationParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f);
+        conversationParams.setMargins(0, dp(2), 0, dp(9));
         root.addView(
                 conversationScroll,
-                new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        0,
-                        1f));
+                conversationParams);
 
         LinearLayout composer = new LinearLayout(this);
         composer.setGravity(Gravity.CENTER_VERTICAL);
+        composer.setPadding(dp(10), dp(4), dp(4), dp(4));
+        composer.setBackground(roundedBackground(COLOR_PANEL, 0xff393447, 15));
         messageInput = new EditText(this);
         messageInput.setSingleLine(false);
         messageInput.setMaxLines(3);
         messageInput.setTextColor(COLOR_TEXT);
         messageInput.setHintTextColor(COLOR_MUTED);
-        messageInput.setHint("Escribe aquí…");
+        messageInput.setHint("Di «Sirvienta» o escribe aquí…");
+        messageInput.setTextSize(14);
+        messageInput.setPadding(dp(6), dp(9), dp(6), dp(9));
+        messageInput.setBackgroundColor(android.graphics.Color.TRANSPARENT);
         messageInput.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
         messageInput.setImeOptions(EditorInfo.IME_ACTION_SEND);
         messageInput.setOnEditorActionListener((view, actionId, event) -> {
@@ -223,9 +272,13 @@ public class MainActivity extends Activity {
                 messageInput,
                 new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         sendButton = button("Enviar");
+        sendButton.setTextColor(COLOR_BACKGROUND);
+        sendButton.setBackground(roundedBackground(COLOR_PINK, COLOR_PINK, 12));
         sendButton.setOnClickListener(view -> sendMessageFromInput());
         composer.addView(sendButton, wrapWrap());
-        root.addView(composer, matchWrap());
+        LinearLayout.LayoutParams composerParams = matchWrap();
+        composerParams.setMargins(0, 0, 0, dp(5));
+        root.addView(composer, composerParams);
 
         LinearLayout textActions = new LinearLayout(this);
         textActions.setOrientation(LinearLayout.HORIZONTAL);
@@ -240,7 +293,24 @@ public class MainActivity extends Activity {
         textActions.addView(shareTextButton, weightedButton());
         root.addView(textActions, matchWrap());
 
+        settingsDialog = new AlertDialog.Builder(this)
+                .setTitle("Ajustes de Sirvienta")
+                .setView(settingsContent)
+                .setPositiveButton("Listo", null)
+                .create();
+        settingsButton.setOnClickListener(view -> settingsDialog.show());
+
         setContentView(root);
+        refreshGameUsageButton();
+        refreshAvatarOverlayButton();
+    }
+
+    private GradientDrawable roundedBackground(int color, int stroke, int radiusDp) {
+        GradientDrawable drawable = new GradientDrawable();
+        drawable.setColor(color);
+        drawable.setCornerRadius(dp(radiusDp));
+        drawable.setStroke(dp(1), stroke);
+        return drawable;
     }
 
     private void loadConversation() {
@@ -847,18 +917,23 @@ public class MainActivity extends Activity {
         }
         LinearLayout bubble = new LinearLayout(this);
         bubble.setOrientation(LinearLayout.VERTICAL);
-        bubble.setPadding(dp(10), dp(7), dp(10), dp(7));
-        bubble.setBackgroundColor("Tú".equals(speaker) ? 0xff243a54 : 0xff202733);
+        bubble.setPadding(dp(13), dp(10), dp(13), dp(10));
+        bubble.setBackground(roundedBackground(
+                "Tú".equals(speaker) ? 0xff20202d : 0xff191823,
+                "Tú".equals(speaker) ? 0xff68415f : 0xff343044,
+                15));
         TextView label = new TextView(this);
         label.setText(speaker);
-        label.setTextColor(COLOR_MUTED);
+        label.setTextColor("Tú".equals(speaker) ? COLOR_PINK : COLOR_CYAN);
         label.setTextSize(11);
         label.setTypeface(null, Typeface.BOLD);
+        label.setLetterSpacing(0.06f);
         bubble.addView(label, matchWrap());
         TextView content = new TextView(this);
         content.setText(text == null ? "Se produjo un error sin detalle." : text);
         content.setTextColor(COLOR_TEXT);
-        content.setTextSize(15);
+        content.setTextSize(14);
+        content.setPadding(0, dp(3), 0, 0);
         bubble.addView(content, matchWrap());
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -906,7 +981,13 @@ public class MainActivity extends Activity {
     private Button button(String title) {
         Button button = new Button(this);
         button.setText(title);
-        button.setMinHeight(dp(48));
+        button.setTextColor(COLOR_TEXT);
+        button.setTextSize(12);
+        button.setTypeface(null, Typeface.BOLD);
+        button.setAllCaps(false);
+        button.setPadding(dp(12), dp(5), dp(12), dp(5));
+        button.setMinHeight(dp(44));
+        button.setBackground(roundedBackground(0xff211e2c, 0xff3d374b, 13));
         return button;
     }
 

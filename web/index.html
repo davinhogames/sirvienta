@@ -3,98 +3,130 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#080b12" />
-    <meta name="description" content="Asistente personal Sirvienta" />
+    <meta name="theme-color" content="#090810" />
+    <meta name="description" content="Sirvienta, tu asistente personal." />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="Sirvienta" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <link rel="manifest" href="/static/manifest.webmanifest" />
     <link rel="icon" href="/static/icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/static/apple-touch-icon.png" />
-    <title>SIRVIENTA</title>
-    <link rel="stylesheet" href="/static/styles.css" />
+    <title>SIRVIENTA — Control central</title>
+    <link rel="stylesheet" href="/static/styles.css?v=14" />
   </head>
   <body>
     <div class="app-shell">
       <aside class="sidebar">
-        <a class="brand" href="#inicio" aria-label="Sirvienta, inicio">SIRVIENTA</a>
+        <a class="brand" href="#inicio" aria-label="Sirvienta, inicio">
+          <span class="brand-mark" aria-hidden="true">S</span>
+          <span>SIRVIENTA<small>PERSONAL SYSTEM</small></span>
+        </a>
+        <div class="menu-label">ESPACIO DE TRABAJO</div>
         <nav aria-label="Navegación principal">
-          <a class="nav active" href="#inicio" aria-current="location">Inicio</a>
-          <a class="nav" href="#voz">Voz</a>
-          <a class="nav" href="#conversacion">Conversación</a>
-          <a class="nav" href="#actividad">Actividad</a>
+          <a class="nav active" href="#inicio" aria-current="location"><span>01</span> Centro</a>
+          <a class="nav" href="#voz"><span>02</span> Voz</a>
+          <a class="nav" href="#conversacion"><span>03</span> Conversación</a>
+          <a class="nav" href="#actividad"><span>04</span> Actividad</a>
         </nav>
+        <div class="sidebar-footer">
+          <span class="live-dot" aria-hidden="true"></span>
+          <div><strong>ASISTENTE LOCAL</strong><small>Tu espacio, tu control</small></div>
+        </div>
       </aside>
 
       <main id="inicio" class="main-panel">
         <header class="topbar">
-          <div>
-            <div class="label">STATUS</div>
-            <div id="statusText" class="status-online" role="status">ONLINE</div>
-          </div>
-          <div class="time-block">
-            <div id="clock">--:--</div>
-            <div id="date">--</div>
+          <div class="eyebrow"><span class="live-dot" aria-hidden="true"></span> SISTEMA <span class="eyebrow-divider">/</span> CENTRO DE MANDO</div>
+          <div class="topbar-meta">
+            <div class="connection"><span id="statusText" class="status-online" role="status">CONECTANDO</span></div>
+            <div class="time-block"><strong id="clock">--:--</strong><span id="date">--</span></div>
           </div>
         </header>
 
-        <section id="voz" class="orb-panel" aria-label="Estado de voz">
-          <div class="orb-core" id="orbCore">
-            <div class="orb-ring ring-a"></div>
-            <div class="orb-ring ring-b"></div>
-            <div class="orb-ring ring-c"></div>
-            <div class="orb-center">
-              <span>S</span>
-            </div>
+        <section id="voz" class="hero-panel" aria-label="Estado de voz">
+          <div class="hero-copy">
+            <div class="section-kicker">INTERFAZ DE VOZ <span class="kicker-line"></span> 01</div>
+            <h1>Tu mundo.<br /><span>Una palabra.</span></h1>
+            <p>Di <strong>«Sirvienta»</strong> para activar el asistente. Vuelve a decirlo para dejarlo en espera.</p>
+            <div class="voice-status"><span class="live-dot" aria-hidden="true"></span><span id="stateLabel" aria-live="polite">INICIANDO VOZ</span></div>
           </div>
-          <div class="state-label" id="stateLabel" aria-live="polite">EN ESPERA</div>
+          <div class="orb-stage" aria-hidden="true">
+            <div class="orb-grid"></div>
+            <div class="orb-core" id="orbCore">
+              <div class="orb-ring ring-a"></div>
+              <div class="orb-ring ring-b"></div>
+              <div class="orb-ring ring-c"></div>
+              <div class="orb-center"><span>S</span></div>
+            </div>
+            <span class="orb-caption">VOICE CORE <i>●</i></span>
+            <span class="orb-index">SV—01</span>
+          </div>
         </section>
 
-        <section class="controls">
-          <button id="wakeButton" class="primary" type="button">Activar micrófono</button>
-          <button id="stopWakeButton" class="secondary" type="button" hidden>Detener escucha</button>
-          <button id="statusButton" class="secondary" type="button">Actualizar estado</button>
+        <section class="command-strip" aria-label="Controles y comando">
+          <div class="mic-control">
+            <span class="control-icon" aria-hidden="true">◉</span>
+            <div><strong>Micrófono</strong><small>Escucha manos libres</small></div>
+            <button id="wakeButton" class="secondary compact-button" type="button" hidden>Reintentar</button>
+            <button id="stopWakeButton" class="secondary compact-button" type="button" aria-label="Apagar micrófono">Apagar</button>
+          </div>
+          <form id="assistantForm" class="command-form">
+            <label class="visually-hidden" for="messageInput">Escribe un comando</label>
+            <span class="command-prompt" aria-hidden="true">&gt;_</span>
+            <input id="messageInput" type="text" autocomplete="off" placeholder="Escribe o dicta lo que necesitas..." />
+            <button class="primary send-button" type="submit">Enviar <span aria-hidden="true">↗</span></button>
+          </form>
+        </section>
+
+        <section class="shortcut-section" aria-label="Comandos sugeridos">
+          <div class="section-heading"><span>ARRANCA CON UN ATAJO</span><span>02 / ACCESO RÁPIDO</span></div>
+          <div class="shortcut-grid">
+            <button class="shortcut-card spotify-card" type="button" data-prompt="Métete en Spotify y reproduce la canción ">
+              <span class="shortcut-icon" aria-hidden="true">♫</span>
+              <span><strong>Busca música</strong><small>Spotify · una canción o artista</small></span>
+              <span class="shortcut-arrow" aria-hidden="true">↗</span>
+            </button>
+            <button class="shortcut-card whatsapp-card" type="button" data-prompt="Escríbele a papá un WhatsApp diciendo que ">
+              <span class="shortcut-icon" aria-hidden="true">↗</span>
+              <span><strong>Prepara un mensaje</strong><small>WhatsApp · revisa antes de enviar</small></span>
+              <span class="shortcut-arrow" aria-hidden="true">↗</span>
+            </button>
+          </div>
         </section>
 
         <section id="conversacion" class="chat-panel">
           <div class="panel-header">
-            <span>Conversación</span>
-            <span class="panel-caption">Este dispositivo</span>
+            <div><div class="section-heading"><span>CONVERSACIÓN</span><span>03 / EN DIRECTO</span></div><h2>Tu conversación</h2></div>
+            <span class="panel-caption"><span class="live-dot" aria-hidden="true"></span> Este dispositivo</span>
           </div>
           <div id="conversationHistory" class="conversation-history" role="log" aria-live="polite" aria-relevant="additions text">
-            <p class="conversation-empty">Tus mensajes aparecerán aquí.</p>
+            <p class="conversation-empty">Tu próxima idea empieza aquí.</p>
           </div>
         </section>
       </main>
 
       <aside class="right-panel">
-        <div class="widget">
-          <div class="widget-title">Comando</div>
-          <form id="assistantForm">
-            <label class="visually-hidden" for="messageInput">Escribe un comando</label>
-            <input id="messageInput" type="text" autocomplete="off" placeholder="Escribe un comando..." />
-            <button class="primary" type="submit">Enviar</button>
-          </form>
-        </div>
-
-        <div class="widget">
-          <div class="widget-title">Respuesta</div>
-          <div id="assistantReply" class="reply-box" role="status" aria-live="polite">El chat de texto está listo. Toca «Activar micrófono» para usar la voz.</div>
+        <section class="widget response-widget">
+          <div class="section-heading"><span>RESPUESTA</span><span>LIVE</span></div>
+          <h2>Te escucho.</h2>
+          <div id="assistantReply" class="reply-box" role="status" aria-live="polite">La escucha se inicia automáticamente. La primera vez, permite el acceso al micrófono.</div>
           <div class="reply-controls">
-            <button id="voiceToggle" class="secondary" type="button" aria-pressed="true">Silenciar voz</button>
-            <button id="repeatReply" class="secondary" type="button" disabled>Repetir respuesta</button>
+            <button id="voiceToggle" class="secondary" type="button" aria-pressed="true">Voz activada</button>
+            <button id="repeatReply" class="secondary" type="button" disabled>Repetir</button>
           </div>
-        </div>
+        </section>
 
-        <section id="actividad" class="widget" aria-labelledby="activityTitle">
-          <div id="activityTitle" class="widget-title">Actividad reciente</div>
+        <section id="actividad" class="widget activity-widget" aria-labelledby="activityTitle">
+          <div class="section-heading"><span id="activityTitle">ACTIVIDAD</span><span>04 / RECIENTE</span></div>
           <div id="activityLogs" class="log-list" aria-live="polite">
             <div class="log-item">Cargando actividad...</div>
           </div>
+          <button id="statusButton" class="activity-refresh secondary" type="button"><span aria-hidden="true">⟳</span> Actualizar estado</button>
         </section>
+        <footer class="right-footer"><span>SV / PERSONAL AI</span><span>DI «SIRVIENTA» PARA ACTIVAR</span></footer>
       </aside>
     </div>
 
-    <script src="/static/app.js?v=13"></script>
+    <script src="/static/app.js?v=14"></script>
   </body>
 </html>

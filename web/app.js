@@ -12,6 +12,7 @@ const stopWakeButton = document.getElementById('stopWakeButton');
 const statusButton = document.getElementById('statusButton');
 const voiceToggle = document.getElementById('voiceToggle');
 const repeatReply = document.getElementById('repeatReply');
+const quickPrompts = document.querySelectorAll('[data-prompt]');
 const sendButton = assistantForm.querySelector('button[type="submit"]');
 const navLinks = document.querySelectorAll('.nav');
 const BrowserSpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -135,14 +136,12 @@ async function sendPrompt(event) {
       throw new Error(payload.error || 'No se pudo enviar el comando.');
     }
 
-    assistantReply.textContent = payload.text || 'No se obtuvo respuesta.';
+    renderAssistantReply(payload.text || 'No se obtuvo respuesta.', payload.external_action);
     lastReply = payload.text || '';
     appendConversationMessage('assistant', lastReply);
     repeatReply.disabled = !lastReply;
     if (voiceEnabled && lastReply) speakReply(lastReply);
-    stateLabel.textContent = payload.status === 'error'
-      ? 'ERROR'
-      : voiceSessionActive ? 'ESCUCHANDO' : 'DI SIRVIENTA';
+    stateLabel.textContent = payload.status === 'error' ? 'ERROR' : getVoiceStatusLabel();
     messageInput.value = '';
     try {
       await loadStatus();
@@ -207,6 +206,30 @@ navLinks.forEach((link) => {
 function updateVoiceToggle() {
   voiceToggle.textContent = voiceEnabled ? 'Silenciar voz' : 'Activar voz';
   voiceToggle.setAttribute('aria-pressed', String(voiceEnabled));
+}
+
+function getVoiceStatusLabel() {
+  if (!voiceListenerEnabled) return 'ESCUCHA DETENIDA';
+  return voiceSessionActive ? 'ESCUCHANDO' : 'DI SIRVIENTA';
+}
+
+function setVoiceSessionActive(active) {
+  voiceSessionActive = active;
+  document.body.classList.toggle('voice-active', active);
+}
+
+function renderAssistantReply(text, action) {
+  assistantReply.replaceChildren(document.createTextNode(text));
+  if (!action || typeof action.url !== 'string' || !/^https:\/\/(open\.spotify\.com|wa\.me)\//.test(action.url)) {
+    return;
+  }
+  const link = document.createElement('a');
+  link.className = 'action-link';
+  link.href = action.url;
+  link.target = '_blank';
+  link.rel = 'noopener noreferrer';
+  link.textContent = action.label || 'Abrir';
+  assistantReply.append(document.createElement('br'), link);
 }
 
 async function speakReply(text) {
@@ -302,9 +325,11 @@ function speakWithBrowserVoice(text) {
   utterance.pitch = 1;
   const spanishVoices = window.speechSynthesis.getVoices()
     .filter((voice) => voice.lang.toLowerCase().startsWith('es'));
-  const spanishVoice = spanishVoices.find((voice) => /neural|natural|online/i.test(voice.name))
+  const spanishVoice = spanishVoices.find((voice) => /elvira|helena|sabina|laura|luc[ií]a|m[oó]nica|paloma|sofia|ximena|female|mujer/i.test(voice.name))
+    || spanishVoices.find((voice) => /neural|natural|online/i.test(voice.name))
     || spanishVoices[0];
   if (spanishVoice) utterance.voice = spanishVoice;
+  utterance.pitch = 1.08;
   utterance.onstart = () => {
     stateLabel.textContent = 'HABLANDO';
   };
@@ -431,7 +456,7 @@ async function startVoiceListener() {
 
 function stopVoiceListener() {
   voiceListenerEnabled = false;
-  voiceSessionActive = false;
+  setVoiceSessionActive(false);
   restartBrowserRecognition = false;
   browserSpeechPaused = false;
   clearTimeout(voiceReconnectTimer);
@@ -584,7 +609,7 @@ function handleBrowserVoiceTranscript(transcript) {
   if (!voiceSessionActive) {
     const wakeWord = /\bsirvienta\b/i.exec(cleanedTranscript);
     if (!wakeWord) return;
-    voiceSessionActive = true;
+    setVoiceSessionActive(true);
     const command = cleanedTranscript
       .slice(wakeWord.index + wakeWord[0].length)
       .replace(/^[\s,.!?¿¡]+/, '')
@@ -603,13 +628,14 @@ function handleBrowserVoiceTranscript(transcript) {
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase();
-  if (/\badios(?:\s*,?\s*sirvienta)?\b/.test(normalizedTranscript)) {
-    voiceSessionActive = false;
-    stopVoiceListener();
-    assistantReply.textContent = 'Hasta luego.';
-    appendConversationMessage('assistant', 'Hasta luego.');
+  if (normalizedTranscript === 'sirvienta' || /\badios(?:\s*,?\s*sirvienta)?\b/.test(normalizedTranscript)) {
+    setVoiceSessionActive(false);
+    const reply = 'Vale. Me quedo a la espera; di «Sirvienta» cuando quieras llamarme.';
+    assistantReply.textContent = reply;
+    stateLabel.textContent = 'DI SIRVIENTA';
+    appendConversationMessage('assistant', reply);
     if (voiceEnabled) {
-      speakReply('Hasta luego.');
+      speakReply(reply);
     }
     return;
   }
@@ -633,10 +659,10 @@ async function sendBrowserVoiceCommand(text) {
     }
 
     lastReply = payload.text || 'No se obtuvo respuesta.';
-    assistantReply.textContent = lastReply;
+    renderAssistantReply(lastReply, payload.external_action);
     appendConversationMessage('assistant', lastReply);
     repeatReply.disabled = !payload.text;
-    stateLabel.textContent = payload.status === 'error' ? 'ERROR' : 'ESCUCHANDO';
+    stateLabel.textContent = payload.status === 'error' ? 'ERROR' : getVoiceStatusLabel();
     try {
       await loadStatus();
     } catch (error) {
@@ -666,7 +692,7 @@ function connectVoiceSocket() {
     wakeButton.disabled = false;
     stopWakeButton.hidden = false;
     stateLabel.textContent = 'DI SIRVIENTA';
-    assistantReply.textContent = 'Escucha activa. Di «Sirvienta» para empezar y «adiós» para detener la escucha.';
+    assistantReply.textContent = 'Escucha activa. Di «Sirvienta» para empezar y vuelve a decirlo para quedar en espera.';
   };
   socket.onmessage = (event) => {
     if (!voiceListenerEnabled) return;
@@ -676,7 +702,7 @@ function connectVoiceSocket() {
       return;
     }
     if (payload.type === 'activated') {
-      voiceSessionActive = true;
+      setVoiceSessionActive(true);
       stateLabel.textContent = 'ESCUCHANDO';
       assistantReply.textContent = 'Te escucho...';
       if (voiceEnabled) speakReply(payload.text);
@@ -688,15 +714,11 @@ function connectVoiceSocket() {
       return;
     }
     if (payload.type === 'response') {
-      const wasVoiceSessionActive = voiceSessionActive;
-      voiceSessionActive = payload.active;
-      assistantReply.textContent = payload.text;
+      setVoiceSessionActive(payload.active);
+      renderAssistantReply(payload.text, payload.external_action);
       lastReply = payload.text;
       repeatReply.disabled = !lastReply;
-      stateLabel.textContent = payload.status === 'error' ? 'ERROR' : voiceSessionActive ? 'ESCUCHANDO' : 'DI SIRVIENTA';
-      if (wasVoiceSessionActive && !voiceSessionActive) {
-        stopVoiceListener();
-      }
+      stateLabel.textContent = payload.status === 'error' ? 'ERROR' : getVoiceStatusLabel();
       if (voiceEnabled && lastReply) {
         speakReply(lastReply);
       }
@@ -718,7 +740,7 @@ function connectVoiceSocket() {
   socket.onclose = () => {
     if (voiceSocket === socket) voiceSocket = null;
     if (!voiceListenerEnabled || voiceSocket) return;
-    voiceSessionActive = false;
+    setVoiceSessionActive(false);
     stateLabel.textContent = 'RECONECTANDO VOZ';
     wakeButton.hidden = true;
     stopWakeButton.hidden = false;
@@ -731,6 +753,12 @@ function connectVoiceSocket() {
 
 wakeButton.addEventListener('click', startVoiceListener);
 stopWakeButton.addEventListener('click', stopVoiceListener);
+quickPrompts.forEach((button) => {
+  button.addEventListener('click', () => {
+    messageInput.value = button.dataset.prompt || '';
+    messageInput.focus();
+  });
+});
 
 function resampleToPcm(audioBuffer, sourceSampleRate, targetSampleRate) {
   const channels = Array.from(
@@ -778,7 +806,7 @@ statusButton.addEventListener('click', async () => {
   stateLabel.textContent = 'ACTUALIZANDO';
   try {
     await loadStatus();
-    stateLabel.textContent = 'EN ESPERA';
+    stateLabel.textContent = getVoiceStatusLabel();
   } catch (error) {
     statusText.textContent = 'OFFLINE';
     assistantReply.textContent = 'No se pudo conectar con Sirvienta.';
@@ -798,3 +826,8 @@ loadStatus().catch((error) => {
   activityLogs.textContent = 'No se pudo cargar la actividad.';
   console.error(error);
 });
+setTimeout(() => {
+  if (document.visibilityState === 'visible' && !voiceListenerEnabled) {
+    startVoiceListener();
+  }
+}, 250);

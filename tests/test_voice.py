@@ -116,6 +116,16 @@ class VoiceConversationTests(unittest.TestCase):
         self.assertFalse(turn.command)
         self.assertTrue(session.active)
 
+    def test_saying_wake_word_again_deactivates_conversation_only(self) -> None:
+        session = VoiceConversation()
+        session.process("Sirvienta")
+
+        turn = session.process("Sirvienta")
+
+        self.assertTrue(turn.closed)
+        self.assertFalse(turn.command)
+        self.assertFalse(session.active)
+
     def test_goodbye_closes_conversation(self) -> None:
         session = VoiceConversation()
         session.process("Sirvienta")

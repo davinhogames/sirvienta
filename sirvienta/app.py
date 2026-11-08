@@ -230,6 +230,7 @@ def create_app() -> FastAPI:
                     "text": " ".join(messages),
                     "active": voice_conversation.active,
                     "status": result["status"] if turn.command else "success",
+                    "external_action": result.get("external_action") if turn.command else None,
                 })
         except WebSocketDisconnect:
             return

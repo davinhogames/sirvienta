@@ -274,6 +274,9 @@ class VoiceConversation:
             return VoiceTurn()
         matches = list(re.finditer(r"\w+", cleaned, re.UNICODE))
         words = [self._normalize(match.group()) for match in matches]
+        if words == [self.wake_word]:
+            self.active = False
+            return VoiceTurn(closed=True)
         for index, word in enumerate(words):
             if word == "adios":
                 command = cleaned[:matches[index].start()].strip(" ,.!?¿¡")
