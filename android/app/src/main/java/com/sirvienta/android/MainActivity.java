@@ -24,6 +24,7 @@ import android.view.inputmethod.EditorInfo;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -69,6 +70,13 @@ public class MainActivity extends Activity {
     private final ExecutorService networkWorker = Executors.newSingleThreadExecutor();
     private final ExecutorService updateWorker = Executors.newSingleThreadExecutor();
     private final android.os.Handler mainHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+    private final Runnable voiceStatusRefresh = new Runnable() {
+        @Override
+        public void run() {
+            refreshListeningStatus();
+            mainHandler.postDelayed(this, 750);
+        }
+    };
     private EditText messageInput;
     private Button sendButton;
     private Button saveTextButton;
@@ -77,6 +85,7 @@ public class MainActivity extends Activity {
     private Button listenButton;
     private TextView connectionStatus;
     private TextView listeningStatus;
+    private ImageView avatarPreview;
     private LinearLayout conversation;
     private ScrollView conversationScroll;
     private CheckBox speakReplies;
@@ -179,6 +188,15 @@ public class MainActivity extends Activity {
         listeningStatus.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
         listeningStatus.setPadding(0, dp(5), 0, dp(8));
         voiceControls.addView(listeningStatus, matchWrap());
+        avatarPreview = new ImageView(this);
+        avatarPreview.setImageResource(R.drawable.sirvienta_avatar);
+        avatarPreview.setContentDescription("Avatar de Sirvienta activa");
+        avatarPreview.setAdjustViewBounds(true);
+        avatarPreview.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        avatarPreview.setVisibility(View.GONE);
+        LinearLayout.LayoutParams avatarParams = new LinearLayout.LayoutParams(dp(82), dp(92));
+        avatarParams.gravity = Gravity.CENTER_HORIZONTAL;
+        voiceControls.addView(avatarPreview, avatarParams);
 
         LinearLayout voiceButtons = new LinearLayout(this);
         voiceButtons.setOrientation(LinearLayout.HORIZONTAL);
@@ -280,6 +298,22 @@ public class MainActivity extends Activity {
         composerParams.setMargins(0, 0, 0, dp(5));
         root.addView(composer, composerParams);
 
+        LinearLayout shortcuts = new LinearLayout(this);
+        shortcuts.setOrientation(LinearLayout.HORIZONTAL);
+        Button spotifyShortcut = button("♫  Spotify");
+        spotifyShortcut.setTextColor(COLOR_CYAN);
+        spotifyShortcut.setOnClickListener(view -> messageInput.setText(
+                "Métete en Spotify y reproduce la canción "));
+        shortcuts.addView(spotifyShortcut, weightedButton());
+        Button whatsappShortcut = button("WhatsApp  ↗");
+        whatsappShortcut.setTextColor(COLOR_PINK);
+        whatsappShortcut.setOnClickListener(view -> messageInput.setText(
+                "Escríbele a papá un WhatsApp diciendo que "));
+        shortcuts.addView(whatsappShortcut, weightedButton());
+        LinearLayout.LayoutParams shortcutParams = matchWrap();
+        shortcutParams.setMargins(0, 0, 0, dp(7));
+        root.addView(shortcuts, shortcutParams);
+
         LinearLayout textActions = new LinearLayout(this);
         textActions.setOrientation(LinearLayout.HORIZONTAL);
         textActions.setPadding(0, dp(4), 0, 0);
@@ -303,6 +337,7 @@ public class MainActivity extends Activity {
         setContentView(root);
         refreshGameUsageButton();
         refreshAvatarOverlayButton();
+        refreshListeningStatus();
     }
 
     private GradientDrawable roundedBackground(int color, int stroke, int radiusDp) {
@@ -643,10 +678,13 @@ public class MainActivity extends Activity {
         }
         refreshGameUsageButton();
         refreshAvatarOverlayButton();
+        mainHandler.removeCallbacks(voiceStatusRefresh);
+        mainHandler.post(voiceStatusRefresh);
     }
 
     @Override
     protected void onPause() {
+        mainHandler.removeCallbacks(voiceStatusRefresh);
         SharedPreferences preferences = getSharedPreferences(PREFS, MODE_PRIVATE);
         preferences.edit().putBoolean(WakeWordService.PREF_APP_FOREGROUND, false).apply();
         if (preferences.getBoolean(PREF_LISTENING_ACTIVE, false)) {
@@ -970,12 +1008,21 @@ public class MainActivity extends Activity {
         if (listeningStatus == null) {
             return;
         }
-        boolean active = getSharedPreferences(PREFS, MODE_PRIVATE)
+        SharedPreferences preferences = getSharedPreferences(PREFS, MODE_PRIVATE);
+        boolean active = preferences
                 .getBoolean(PREF_LISTENING_ACTIVE, false);
-        listeningStatus.setText(active
-                ? "● Escuchando “Sirvienta” · puedes cerrar la app; conserva la notificación"
-                : "● Palabra clave desactivada");
-        listeningStatus.setTextColor(active ? 0xff7dd3a8 : COLOR_MUTED);
+        boolean engaged = active && preferences.getBoolean(
+                WakeWordService.PREF_ASSISTANT_ENGAGED,
+                false);
+        listeningStatus.setText(!active
+                ? "● MICRÓFONO APAGADO · ACTIVA LA ESCUCHA"
+                : engaged
+                        ? "● SIRVIENTA ACTIVA · TE ESCUCHO"
+                        : "● EN ESPERA · DI «SIRVIENTA» PARA ACTIVAR");
+        listeningStatus.setTextColor(!active ? COLOR_MUTED : engaged ? COLOR_PINK : COLOR_CYAN);
+        if (avatarPreview != null) {
+            avatarPreview.setVisibility(engaged ? View.VISIBLE : View.GONE);
+        }
     }
 
     private Button button(String title) {

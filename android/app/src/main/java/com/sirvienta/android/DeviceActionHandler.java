@@ -5,11 +5,14 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
+import android.net.Uri;
 import android.provider.AlarmClock;
 import android.util.Log;
 
 import org.json.JSONObject;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.text.Normalizer;
 import java.util.Date;
@@ -35,6 +38,10 @@ final class DeviceActionHandler {
 
     static Result executeLocalCommand(Context context, String text) {
         String normalized = normalize(text);
+        Result externalAction = handleExternalCommand(context, text);
+        if (externalAction != null) {
+            return externalAction;
+        }
         if (normalized.matches(".*\\b(que hora es|dime la hora|hora actual)\\b.*")) {
             String time = new SimpleDateFormat("HH:mm", Locale.getDefault()).format(new Date());
             return new Result(true, "Son las " + time + ".");
@@ -171,6 +178,109 @@ final class DeviceActionHandler {
             return openApp(context, appName);
         }
         return null;
+    }
+
+    private static Result handleExternalCommand(Context context, String text) {
+        Pattern spotify = Pattern.compile(
+                "^(?:oye\\s+)?(?:m[eé]tete|entra|abre|ve)\\s+(?:en|a)\\s+spotify\\s+(?:y\\s+)?"
+                        + "(?:reproduce|pon(?:me)?|escucha|busca)\\s+"
+                        + "(?:(?:la\\s+)?canci[oó]n\\s+)?(.+)$",
+                Pattern.CASE_INSENSITIVE);
+        Matcher spotifyMatch = spotify.matcher(text.trim());
+        if (!spotifyMatch.matches()) {
+            spotify = Pattern.compile(
+                    "^(?:oye\\s+)?(?:reproduce|pon(?:me)?|escucha|busca)\\s+"
+                            + "(?:(?:la\\s+)?canci[oó]n\\s+)?(.+?)\\s+(?:en|por)\\s+spotify$",
+                    Pattern.CASE_INSENSITIVE);
+            spotifyMatch = spotify.matcher(text.trim());
+        }
+        if (spotifyMatch.matches()) {
+            String query = spotifyMatch.group(1).trim();
+            if (query.isEmpty()) {
+                return new Result(false, "Dime qué canción quieres escuchar en Spotify.");
+            }
+            Intent search = new Intent(
+                    Intent.ACTION_VIEW,
+                    Uri.parse("spotify:search:" + Uri.encode(query)))
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            try {
+                context.startActivity(search);
+                return new Result(
+                        true,
+                        "He abierto Spotify buscando “" + query
+                                + "”. Toca la canción para empezar a reproducirla.");
+            } catch (ActivityNotFoundException | SecurityException error) {
+                Log.w(TAG, "No se pudo abrir la búsqueda de Spotify; se probará en la web.", error);
+                Intent webSearch = new Intent(
+                        Intent.ACTION_VIEW,
+                        Uri.parse("https://open.spotify.com/search/"
+                                + Uri.encode(query)))
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                try {
+                    context.startActivity(webSearch);
+                    return new Result(
+                            true,
+                            "He abierto la búsqueda de “" + query
+                                    + "” en Spotify Web. Selecciona la canción para reproducirla.");
+                } catch (ActivityNotFoundException | SecurityException webError) {
+                    Log.e(TAG, "No hay una aplicación disponible para abrir Spotify.", webError);
+                    return new Result(false, "No he podido abrir Spotify en este móvil.");
+                }
+            }
+        }
+
+        Pattern whatsapp = Pattern.compile(
+                "^(?:oye\\s+)?(?:escr[ií]bele|escribe(?:le)?|manda(?:le)?|env[ií]ale)\\s+"
+                        + "(?:un\\s+)?whats?app\\s+(?:a|para)\\s+(.+?)\\s+"
+                        + "(?:diciendo(?:le)?\\s+que|que\\s+diga|con\\s+el\\s+mensaje(?:\\s+de)?)\\s+(.+)$",
+                Pattern.CASE_INSENSITIVE);
+        Matcher whatsappMatch = whatsapp.matcher(text.trim());
+        if (!whatsappMatch.matches()) {
+            whatsapp = Pattern.compile(
+                    "^(?:oye\\s+)?(?:escr[ií]bele|escribe(?:le)?|manda(?:le)?|env[ií]ale)\\s+"
+                            + "(?:a|para)\\s+(.+?)\\s+(?:un\\s+)?whats?app\\s+"
+                            + "(?:diciendo(?:le)?\\s+que|que\\s+diga|con\\s+el\\s+mensaje(?:\\s+de)?)\\s+(.+)$",
+                    Pattern.CASE_INSENSITIVE);
+            whatsappMatch = whatsapp.matcher(text.trim());
+        }
+        if (!whatsappMatch.matches()) {
+            return null;
+        }
+
+        String recipient = whatsappMatch.group(1).trim();
+        String message = whatsappMatch.group(2).trim();
+        if (recipient.isEmpty() || message.isEmpty()) {
+            return new Result(false, "Dime a quién quieres escribir y qué mensaje preparo.");
+        }
+        Intent shareToWhatsApp = new Intent(Intent.ACTION_SEND)
+                .setType("text/plain")
+                .setPackage("com.whatsapp")
+                .putExtra(Intent.EXTRA_TEXT, message)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        try {
+            context.startActivity(shareToWhatsApp);
+            return new Result(
+                    true,
+                    "He preparado para WhatsApp el mensaje para " + recipient
+                            + ". Elige ese contacto y pulsa Enviar para confirmarlo.");
+        } catch (ActivityNotFoundException | SecurityException error) {
+            Log.w(TAG, "WhatsApp no está disponible; se probará un enlace web prellenado.", error);
+            String encodedMessage = URLEncoder.encode(message, StandardCharsets.UTF_8);
+            Intent webWhatsApp = new Intent(
+                    Intent.ACTION_VIEW,
+                    Uri.parse("https://wa.me/?text=" + encodedMessage))
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            try {
+                context.startActivity(webWhatsApp);
+                return new Result(
+                        true,
+                        "He preparado el mensaje para " + recipient
+                                + " en WhatsApp Web. Selecciona el contacto y confirma el envío.");
+            } catch (ActivityNotFoundException | SecurityException webError) {
+                Log.e(TAG, "No se pudo abrir WhatsApp.", webError);
+                return new Result(false, "No he podido abrir WhatsApp en este móvil.");
+            }
+        }
     }
 
     static Result execute(Context context, JSONObject action) {

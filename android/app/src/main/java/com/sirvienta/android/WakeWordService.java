@@ -35,6 +35,7 @@ public class WakeWordService extends Service {
     public static final String EXTRA_BEGIN_COMMAND = "begin_command";
     public static final String EXTRA_APP_FOREGROUND = "app_foreground";
     public static final String PREF_LISTENING_ACTIVE = "listening_active";
+    public static final String PREF_ASSISTANT_ENGAGED = "assistant_engaged";
     public static final String PREF_APP_FOREGROUND = "app_foreground";
     public static final String ACTION_STOP = "com.sirvienta.android.STOP_LISTENING";
     public static final String ACTION_UPDATE_APP_VISIBILITY = "com.sirvienta.android.UPDATE_APP_VISIBILITY";
@@ -60,6 +61,7 @@ public class WakeWordService extends Service {
 
     private AvatarOverlay avatarOverlay;
     private volatile boolean serviceActive;
+    private volatile boolean assistantEngaged;
     private boolean recognitionActive;
     private boolean waitingForSpeechOutput;
     private boolean stopAfterSpeechOutput;
@@ -122,6 +124,11 @@ public class WakeWordService extends Service {
                 .putBoolean(PREF_LISTENING_ACTIVE, true)
                 .apply();
         serviceActive = true;
+        assistantEngaged = false;
+        getSharedPreferences(PREFS, MODE_PRIVATE)
+                .edit()
+                .putBoolean(PREF_ASSISTANT_ENGAGED, false)
+                .apply();
         lastGameUsageCheck = System.currentTimeMillis();
         mainHandler.postDelayed(this::checkGameUsage, GAME_USAGE_POLL_INTERVAL_MS);
         boolean beginWithCommand = intent != null && intent.getBooleanExtra(EXTRA_BEGIN_COMMAND, false);
@@ -150,6 +157,7 @@ public class WakeWordService extends Service {
                     @Override
                     public void onGoodbye() {
                         mainHandler.post(() -> {
+                            setAssistantEngaged(false);
                             stopAfterSpeechOutput = true;
                             mainHandler.removeCallbacks(commandTimeout);
                             updateNotification("Hasta luego. Deteniendo la escucha.");
@@ -190,9 +198,20 @@ public class WakeWordService extends Service {
     }
 
     private void onWakeWordDetected() {
-        if (!serviceActive || recognitionActive) {
+        if (!serviceActive || (recognitionActive && !assistantEngaged)) {
             return;
         }
+        if (assistantEngaged) {
+            setAssistantEngaged(false);
+            recognitionActive = true;
+            mainHandler.removeCallbacks(commandTimeout);
+            voiceInput.pauseForResponse();
+            avatarOverlay.hide();
+            updateNotification("Sirvienta en espera. Di «Sirvienta» para volver a activarla.");
+            speak("Vale. Me quedo en espera. Di Sirvienta cuando quieras llamarme.");
+            return;
+        }
+        setAssistantEngaged(true);
         recognitionActive = true;
         mainHandler.removeCallbacks(commandTimeout);
         mainHandler.postDelayed(commandTimeout, COMMAND_TIMEOUT_MS);
@@ -211,6 +230,7 @@ public class WakeWordService extends Service {
             return;
         }
         pendingDirectCommand = false;
+        setAssistantEngaged(true);
         recognitionActive = true;
         mainHandler.removeCallbacks(commandTimeout);
         mainHandler.postDelayed(commandTimeout, COMMAND_TIMEOUT_MS);
@@ -227,6 +247,7 @@ public class WakeWordService extends Service {
             return;
         }
         mainHandler.removeCallbacks(commandTimeout);
+        setAssistantEngaged(true);
         recognitionActive = true;
         updateNotification("Procesando localmente: " + text);
         worker.execute(() -> {
@@ -262,6 +283,7 @@ public class WakeWordService extends Service {
         Log.e(TAG, message, error);
         serviceActive = false;
         recognitionActive = false;
+        setAssistantEngaged(false);
         getSharedPreferences(PREFS, MODE_PRIVATE)
                 .edit()
                 .putBoolean(PREF_LISTENING_ACTIVE, false)
@@ -345,9 +367,22 @@ public class WakeWordService extends Service {
 
     private void updateAvatarVisibility() {
         SharedPreferences preferences = getSharedPreferences(PREFS, MODE_PRIVATE);
-        if (serviceActive && !preferences.getBoolean(PREF_APP_FOREGROUND, false)) {
+        if (serviceActive
+                && assistantEngaged
+                && !preferences.getBoolean(PREF_APP_FOREGROUND, false)) {
             avatarOverlay.show();
         } else {
+            avatarOverlay.hide();
+        }
+    }
+
+    private void setAssistantEngaged(boolean engaged) {
+        assistantEngaged = engaged;
+        getSharedPreferences(PREFS, MODE_PRIVATE)
+                .edit()
+                .putBoolean(PREF_ASSISTANT_ENGAGED, engaged)
+                .apply();
+        if (!engaged) {
             avatarOverlay.hide();
         }
     }
@@ -464,7 +499,7 @@ public class WakeWordService extends Service {
         String notice = pendingGameNotice;
         pendingGameNotice = null;
         recognitionActive = true;
-        showAvatarInBackground();
+        updateAvatarVisibility();
         voiceInput.pauseForResponse();
         speak(notice);
         return true;
@@ -528,6 +563,7 @@ public class WakeWordService extends Service {
     private void stopListening() {
         serviceActive = false;
         recognitionActive = false;
+        setAssistantEngaged(false);
         avatarOverlay.hide();
         getSharedPreferences(PREFS, MODE_PRIVATE)
                 .edit()
@@ -548,6 +584,7 @@ public class WakeWordService extends Service {
     @Override
     public void onDestroy() {
         serviceActive = false;
+        setAssistantEngaged(false);
         avatarOverlay.hide();
         mainHandler.removeCallbacksAndMessages(null);
         voiceInput.close();

@@ -10,7 +10,8 @@ import java.io.InputStream;
 
 final class LocalVoiceAssets {
     static final String VOSK_MODEL_ASSET = "vosk-model-small-es-0.42";
-    static final String TTS_MODEL_ASSET = "tts/es_ES-carlfm-x_low.onnx";
+    static final String TTS_MODEL_ASSET = "tts/es_ES-sharvard-medium.onnx";
+    static final int TTS_SPEAKER_ID = 1;
     static final String TTS_TOKENS_ASSET = "tts/tokens.txt";
     static final String TTS_DATA_ASSET = "tts/espeak-ng-data";
 

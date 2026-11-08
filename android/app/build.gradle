@@ -5,8 +5,8 @@ plugins {
 }
 
 def updateManifestUrl = providers.gradleProperty("sirvientaUpdateManifestUrl").getOrElse("")
-def appVersionCode = providers.gradleProperty("sirvientaVersionCode").map { it.toInteger() }.getOrElse(13)
-def appVersionName = providers.gradleProperty("sirvientaVersionName").getOrElse("1.1-beta")
+def appVersionCode = providers.gradleProperty("sirvientaVersionCode").map { it.toInteger() }.getOrElse(14)
+def appVersionName = providers.gradleProperty("sirvientaVersionName").getOrElse("1.2-beta")
 def signingKeystorePath = providers.environmentVariable("SIRVIENTA_KEYSTORE_PATH").orNull
 def signingStorePassword = providers.environmentVariable("SIRVIENTA_KEYSTORE_PASSWORD").orNull
 def signingKeyAlias = providers.environmentVariable("SIRVIENTA_KEY_ALIAS").orNull

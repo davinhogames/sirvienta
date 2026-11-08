@@ -133,7 +133,7 @@ final class OfflineVoiceInput {
         if (!active || json == null || json.isEmpty()) {
             return;
         }
-        final String text;
+        String text;
         try {
             text = new JSONObject(json).optString("text", "").trim();
         } catch (JSONException error) {
@@ -150,6 +150,17 @@ final class OfflineVoiceInput {
         }
         if (awaitingCommand) {
             awaitingCommand = false;
+            Matcher wakeWord = WAKE_WORD.matcher(text.toLowerCase(Locale.ROOT));
+            if (wakeWord.find()) {
+                String command = text.substring(wakeWord.end())
+                        .trim()
+                        .replaceAll("^[,.:;\\s]+", "");
+                if (command.isEmpty()) {
+                    current.onWakeWord();
+                    return;
+                }
+                text = command;
+            }
             pauseForResponse();
             String normalized = text.toLowerCase(Locale.ROOT);
             if (normalized.matches(".*\\bad[ií]os\\b.*")) {

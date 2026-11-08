@@ -19,9 +19,11 @@ sherpa-onnx Android runtime 1.13.8
 Apache License 2.0
 https://github.com/k2-fsa/sherpa-onnx
 
-Spanish voice es_ES-carlfm-x_low
-Dataset by carlfm; public-domain dataset according to its model card.
-https://huggingface.co/rhasspy/piper-voices/tree/v1.0.0/es/es_ES/carlfm/x_low
+Spanish voice es_ES-sharvard-medium
+Uses speaker F (speaker ID 1) from the Sharvard Spanish voice model.
+Dataset: https://datashare.ed.ac.uk/handle/10283/574
+Dataset license: Creative Commons Attribution 3.0 (CC BY 3.0).
+Model card and source: https://huggingface.co/rhasspy/piper-voices/tree/main/es/es_ES/sharvard/medium
 
 espeak-ng-data is distributed by sherpa-onnx for Piper-compatible voices.
 https://github.com/k2-fsa/sherpa-onnx/releases/tag/tts-models

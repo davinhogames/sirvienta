@@ -48,7 +48,10 @@ final class BundledSpeechOutput {
         currentTask = worker.submit(() -> {
             try {
                 OfflineTts synthesizer = getOrCreateTts(context.getApplicationContext());
-                GeneratedAudio audio = synthesizer.generate(text, 0, 1.0f);
+                GeneratedAudio audio = synthesizer.generate(
+                        text,
+                        LocalVoiceAssets.TTS_SPEAKER_ID,
+                        1.0f);
                 playAudio(audio.getSamples(), audio.getSampleRate(), requestId);
                 if (requestId == currentPlaybackId()) {
                     listener.onComplete();
