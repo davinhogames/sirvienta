@@ -31,6 +31,9 @@ final class OfflineVoiceInput {
     private Listener listener;
     private volatile boolean active;
     private volatile boolean awaitingCommand;
+    private volatile boolean assistantEngaged;
+    private String lastHandledHypothesis = "";
+    private long lastHandledHypothesisAt;
 
     void start(Context context, Listener listener, boolean beginWithCommand) throws IOException {
         if (active) {
@@ -43,6 +46,7 @@ final class OfflineVoiceInput {
             speechService = new SpeechService(recognizer, 16_000.0f);
             active = true;
             awaitingCommand = beginWithCommand;
+            assistantEngaged = beginWithCommand;
             boolean started = speechService.startListening(new org.vosk.android.RecognitionListener() {
                 @Override
                 public void onPartialResult(String hypothesis) { }
@@ -87,6 +91,7 @@ final class OfflineVoiceInput {
         if (!active || speechService == null) {
             return;
         }
+        assistantEngaged = true;
         awaitingCommand = true;
         speechService.reset();
     }
@@ -113,6 +118,7 @@ final class OfflineVoiceInput {
     void close() {
         active = false;
         awaitingCommand = false;
+        assistantEngaged = false;
         if (speechService != null) {
             speechService.cancel();
             speechService.shutdown();
@@ -143,9 +149,28 @@ final class OfflineVoiceInput {
         if (text.isEmpty()) {
             return;
         }
+        String normalizedHypothesis = text.toLowerCase(Locale.ROOT)
+                .replaceAll("[^\\p{L}\\p{N}\\s]", "")
+                .replaceAll("\\s+", " ")
+                .trim();
+        long now = System.currentTimeMillis();
+        if (normalizedHypothesis.equals(lastHandledHypothesis)
+                && now - lastHandledHypothesisAt < 1_200L) {
+            return;
+        }
+        lastHandledHypothesis = normalizedHypothesis;
+        lastHandledHypothesisAt = now;
 
         Listener current = listener;
         if (current == null) {
+            return;
+        }
+        if (isGoodbye(text)) {
+            if (assistantEngaged) {
+                assistantEngaged = false;
+                pauseForResponse();
+                current.onGoodbye();
+            }
             return;
         }
         if (awaitingCommand) {
@@ -156,32 +181,46 @@ final class OfflineVoiceInput {
                         .trim()
                         .replaceAll("^[,.:;\\s]+", "");
                 if (command.isEmpty()) {
+                    assistantEngaged = !assistantEngaged;
+                    awaitingCommand = assistantEngaged;
                     current.onWakeWord();
                     return;
                 }
                 text = command;
             }
+            assistantEngaged = true;
             pauseForResponse();
-            String normalized = text.toLowerCase(Locale.ROOT);
-            if (normalized.matches(".*\\bad[ií]os\\b.*")) {
-                current.onGoodbye();
-            } else {
-                current.onCommand(text);
-            }
+            current.onCommand(text);
             return;
         }
 
         Matcher wakeWord = WAKE_WORD.matcher(text.toLowerCase(Locale.ROOT));
         if (!wakeWord.find()) {
+            if (!assistantEngaged) {
+                return;
+            }
+            pauseForResponse();
+            current.onCommand(text);
             return;
         }
         String command = text.substring(wakeWord.end()).trim().replaceAll("^[,.:;\\s]+", "");
         if (command.isEmpty()) {
-            awaitingCommand = true;
+            assistantEngaged = !assistantEngaged;
+            awaitingCommand = assistantEngaged;
             current.onWakeWord();
         } else {
+            assistantEngaged = true;
             pauseForResponse();
             current.onCommand(command);
         }
+    }
+
+    private boolean isGoodbye(String text) {
+        String normalized = text.toLowerCase(Locale.ROOT)
+                .replaceAll("[,.!?;:]", " ")
+                .replaceAll("\\s+", " ")
+                .trim();
+        return normalized.matches(
+                "^(?:ad[ií]os|hasta luego|hasta pronto|me voy)(?:\\s+sirvienta)?$");
     }
 }

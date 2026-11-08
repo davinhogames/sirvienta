@@ -58,6 +58,15 @@
                 <action android:name="android.service.voice.VoiceInteractionSessionService" />
             </intent-filter>
         </service>
+        <service
+            android:name=".NotificationAccessService"
+            android:exported="true"
+            android:label="Sirvienta"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
         <receiver
             android:name=".LocalReminderReceiver"
             android:exported="false" />

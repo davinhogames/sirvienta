@@ -92,7 +92,7 @@ jobs:
         run: |
           ./gradlew --no-daemon assembleRelease \
             "-PsirvientaVersionCode=$SIRVIENTA_VERSION_CODE" \
-            "-PsirvientaVersionName=1.2-beta-build.$GITHUB_RUN_NUMBER" \
+            "-PsirvientaVersionName=1.3-beta-build.$GITHUB_RUN_NUMBER" \
             "-PsirvientaUpdateManifestUrl=https://github.com/$GITHUB_REPOSITORY/releases/latest/download/latest.json"
 
       - name: Create release manifest
@@ -122,7 +122,7 @@ jobs:
           manifest = {
               "available": True,
               "version_code": int(os.environ["SIRVIENTA_VERSION_CODE"]),
-              "version_name": f"1.2-beta-build.{run_number}",
+              "version_name": f"1.3-beta-build.{run_number}",
               "architecture": "arm64-v8a",
               "kind": "release",
               "size_bytes": apk.stat().st_size,
@@ -161,7 +161,7 @@ jobs:
             "$RUNNER_TEMP/latest.json" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "Sirvienta Android Beta 1.2-build.$GITHUB_RUN_NUMBER" \
+            --title "Sirvienta Android Beta 1.3-build.$GITHUB_RUN_NUMBER" \
             --notes "Beta Android ARM64 firmada. SHA-256 del APK incluido en latest.json. La instalacion requiere aprobacion en el telefono." \
             --latest
 

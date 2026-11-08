@@ -38,10 +38,6 @@ final class BundledSpeechOutput {
         return INSTANCE;
     }
 
-    synchronized void prepare(Context context) throws IOException {
-        getOrCreateTts(context.getApplicationContext());
-    }
-
     synchronized void speak(Context context, String text, Listener listener) {
         stop();
         long requestId = ++playbackId;

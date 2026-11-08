@@ -6,6 +6,7 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.net.Uri;
+import android.provider.ContactsContract;
 import android.provider.AlarmClock;
 import android.util.Log;
 
@@ -41,6 +42,37 @@ final class DeviceActionHandler {
         Result externalAction = handleExternalCommand(context, text);
         if (externalAction != null) {
             return externalAction;
+        }
+        Pattern openAndReadNotifications = Pattern.compile(
+                "^(?:oye\\s+)?(?:abre|inicia|entra\\s+en|m[eé]tete\\s+en)\\s+(.+?)\\s+y\\s+"
+                        + "(?:mir[ae]|revis[ae]|lee|consulta|dime)\\s+(?:las?\\s+)?notificaciones$",
+                Pattern.CASE_INSENSITIVE);
+        Matcher openAndReadMatch = openAndReadNotifications.matcher(text.trim());
+        if (openAndReadMatch.matches()) {
+            String appName = openAndReadMatch.group(1).trim();
+            Result opened = openApp(context, appName);
+            if (!opened.success) {
+                return opened;
+            }
+            Result notifications = NotificationAccessService.readActiveNotifications(appName);
+            return new Result(
+                    notifications.success,
+                    opened.message + "\n" + notifications.message);
+        }
+        Pattern readNotifications = Pattern.compile(
+                "^(?:oye\\s+)?(?:mir[ae]|revis[ae]|lee|consulta|dime)\\s+(?:las?\\s+)?"
+                        + "notificaciones(?:\\s+de\\s+(.+))?$",
+                Pattern.CASE_INSENSITIVE);
+        Matcher readNotificationsMatch = readNotifications.matcher(text.trim());
+        if (readNotificationsMatch.matches()) {
+            return NotificationAccessService.readActiveNotifications(readNotificationsMatch.group(1));
+        }
+        Pattern call = Pattern.compile(
+                "^(?:oye\\s+)?(?:llama|llamar|marca)\\s+(?:(?:a|al)\\s+)?(.+)$",
+                Pattern.CASE_INSENSITIVE);
+        Matcher callMatch = call.matcher(text.trim());
+        if (callMatch.matches()) {
+            return callContact(context, callMatch.group(1).trim());
         }
         if (normalized.matches(".*\\b(que hora es|dime la hora|hora actual)\\b.*")) {
             String time = new SimpleDateFormat("HH:mm", Locale.getDefault()).format(new Date());
@@ -170,14 +202,54 @@ final class DeviceActionHandler {
         }
 
         Pattern launch = Pattern.compile(
-                "^(?:oye\\s+)?(?:abre|abrir|inicia|iniciar|ejecuta|ejecutar)\\s+"
-                        + "(?:la\\s+)?(?:aplicacion\\s+de\\s+|app\\s+de\\s+)?(.+)$");
+                "^(?:oye\\s+)?(?:abre|abrir|inicia|iniciar|ejecuta|ejecutar|"
+                        + "entra\\s+en|m[eé]tete\\s+en|ve\\s+a)\\s+"
+                        + "(?:la\\s+)?(?:aplicacion\\s+de\\s+|app\\s+de\\s+)?(.+)$",
+                Pattern.CASE_INSENSITIVE);
         Matcher launchMatch = launch.matcher(normalized);
         if (launchMatch.matches()) {
             String appName = launchMatch.group(1).replaceAll("\\s+por favor$", "").trim();
             return openApp(context, appName);
         }
         return null;
+    }
+
+    private static Result callContact(Context context, String recipient) {
+        if (recipient.isEmpty()) {
+            return new Result(false, "Dime a quién quieres llamar.");
+        }
+        String number = recipient.replaceAll("[\\s().-]", "");
+        if (number.matches("\\+?\\d{3,}")) {
+            Intent dial = new Intent(
+                    Intent.ACTION_DIAL,
+                    Uri.fromParts("tel", number, null))
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            try {
+                context.startActivity(dial);
+                return new Result(
+                        true,
+                        "He abierto el marcador con el número. Revisa el número y confirma la llamada.");
+            } catch (ActivityNotFoundException | SecurityException error) {
+                Log.e(TAG, "No se pudo abrir el marcador para iniciar la llamada.", error);
+                return new Result(false, "No he podido abrir el marcador de llamadas.");
+            }
+        }
+
+        Uri contact = Uri.withAppendedPath(
+                ContactsContract.Contacts.CONTENT_FILTER_URI,
+                Uri.encode(recipient));
+        Intent showContact = new Intent(Intent.ACTION_VIEW, contact)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        try {
+            context.startActivity(showContact);
+            return new Result(
+                    true,
+                    "He abierto la búsqueda de contactos para " + recipient
+                            + ". Selecciona el contacto y confirma la llamada.");
+        } catch (ActivityNotFoundException | SecurityException error) {
+            Log.e(TAG, "No se pudo abrir la búsqueda del contacto solicitado.", error);
+            return new Result(false, "No he podido abrir el contacto " + recipient + ".");
+        }
     }
 
     private static Result handleExternalCommand(Context context, String text) {
@@ -339,8 +411,13 @@ final class DeviceActionHandler {
             return new Result(false, "Android no ofrece un acceso directo para " + requestedName + ".");
         }
         launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        context.startActivity(launchIntent);
-        return new Result(true, "Abriendo " + match.loadLabel(packageManager) + " en el móvil.");
+        try {
+            context.startActivity(launchIntent);
+            return new Result(true, "Abriendo " + match.loadLabel(packageManager) + " en el móvil.");
+        } catch (ActivityNotFoundException | SecurityException error) {
+            Log.e(TAG, "Android no pudo abrir " + requestedName + ".", error);
+            return new Result(false, "Android no ha permitido abrir " + requestedName + ".");
+        }
     }
 
     private static Result setAlarm(Context context, JSONObject action) {
@@ -355,10 +432,15 @@ final class DeviceActionHandler {
                 .putExtra(AlarmClock.EXTRA_MESSAGE, action.optString("label", "Sirvienta"))
                 .putExtra(AlarmClock.EXTRA_SKIP_UI, true)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        context.startActivity(alarmIntent);
-        return new Result(
-                true,
-                String.format(Locale.getDefault(), "Alarma puesta a las %02d:%02d.", hour, minute));
+        try {
+            context.startActivity(alarmIntent);
+            return new Result(
+                    true,
+                    String.format(Locale.getDefault(), "Alarma puesta a las %02d:%02d.", hour, minute));
+        } catch (ActivityNotFoundException | SecurityException error) {
+            Log.e(TAG, "No se pudo abrir la aplicación de alarmas.", error);
+            return new Result(false, "No he podido abrir la aplicación de alarmas.");
+        }
     }
 
     private static Result setTimer(Context context, JSONObject action) {
@@ -371,8 +453,13 @@ final class DeviceActionHandler {
                 .putExtra(AlarmClock.EXTRA_MESSAGE, action.optString("label", "Sirvienta"))
                 .putExtra(AlarmClock.EXTRA_SKIP_UI, true)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        context.startActivity(timerIntent);
-        return new Result(true, "Temporizador iniciado en el móvil.");
+        try {
+            context.startActivity(timerIntent);
+            return new Result(true, "Temporizador iniciado en el móvil.");
+        } catch (ActivityNotFoundException | SecurityException error) {
+            Log.e(TAG, "No se pudo abrir la aplicación de temporizadores.", error);
+            return new Result(false, "No he podido abrir la aplicación de temporizadores.");
+        }
     }
 
     private static String normalize(String text) {

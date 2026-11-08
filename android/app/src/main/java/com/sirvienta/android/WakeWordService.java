@@ -64,7 +64,6 @@ public class WakeWordService extends Service {
     private volatile boolean assistantEngaged;
     private boolean recognitionActive;
     private boolean waitingForSpeechOutput;
-    private boolean stopAfterSpeechOutput;
     private volatile boolean pendingDirectCommand;
     private long lastGameUsageCheck;
     private String foregroundPackage;
@@ -105,7 +104,7 @@ public class WakeWordService extends Service {
             if (appForeground) {
                 avatarOverlay.hide();
             } else if (serviceActive) {
-                avatarOverlay.show();
+                updateAvatarVisibility();
             }
             if (!serviceActive) {
                 stopSelf(startId);
@@ -158,9 +157,8 @@ public class WakeWordService extends Service {
                     public void onGoodbye() {
                         mainHandler.post(() -> {
                             setAssistantEngaged(false);
-                            stopAfterSpeechOutput = true;
                             mainHandler.removeCallbacks(commandTimeout);
-                            updateNotification("Hasta luego. Deteniendo la escucha.");
+                            updateNotification("Hasta luego. Sirvienta queda en espera.");
                             speak("Hasta luego.");
                         });
                     }
@@ -259,6 +257,9 @@ public class WakeWordService extends Service {
                     LocalLlm.load(getApplicationContext());
                 }
                 String reply = localAction == null ? LocalLlm.generate(prompt, 192) : localAction.message;
+                if (localAction == null) {
+                    LocalLlm.close();
+                }
                 LocalConversationHistory.append(this, "assistant", reply);
                 mainHandler.post(() -> {
                     if (serviceActive) {
@@ -344,11 +345,6 @@ public class WakeWordService extends Service {
 
     private void finishSpeechOutput() {
         waitingForSpeechOutput = false;
-        if (stopAfterSpeechOutput) {
-            stopAfterSpeechOutput = false;
-            stopListening();
-            return;
-        }
         recognitionActive = false;
         if (!announcePendingGameNotice()) {
             updateAvatarVisibility();

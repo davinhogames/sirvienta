@@ -97,9 +97,7 @@ public class MainActivity extends Activity {
     private boolean commandRequestedAfterPermission;
     private boolean listeningRequestedAfterPermission;
     private boolean speechOutputPending;
-    private boolean localModelReady;
     private String lastAssistantResponse = "";
-    private String pendingUpdateSpeech = "";
     private int updateNoticeShownForVersionCode;
 
     @Override
@@ -111,7 +109,6 @@ public class MainActivity extends Activity {
         SharedPreferences preferences = getSharedPreferences(PREFS, MODE_PRIVATE);
         buildInterface(preferences);
         loadConversation();
-        initializeLocalModel();
         checkForUpdates();
         refreshListeningStatus();
         if (assistantStartRequested) {
@@ -144,7 +141,7 @@ public class MainActivity extends Activity {
         root.addView(header, matchWrap());
 
         connectionStatus = new TextView(this);
-        connectionStatus.setText("●  PREPARANDO IA LOCAL");
+        connectionStatus.setText("●  ACCIONES LOCALES LISTAS · IA BAJO DEMANDA");
         connectionStatus.setTextColor(COLOR_CYAN);
         connectionStatus.setTextSize(10);
         connectionStatus.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
@@ -176,7 +173,7 @@ public class MainActivity extends Activity {
         voiceControls.addView(heroTitle, matchWrap());
 
         TextView localMode = new TextView(this);
-        localMode.setText("IA, voz y reconocimiento en español · funciona sin conexión");
+        localMode.setText("Comandos del móvil disponibles al instante · conversación IA bajo demanda");
         localMode.setTextColor(COLOR_MUTED);
         localMode.setTextSize(12);
         localMode.setPadding(0, 0, 0, dp(9));
@@ -249,6 +246,9 @@ public class MainActivity extends Activity {
         avatarOverlayButton = button("Permitir avatar flotante");
         avatarOverlayButton.setOnClickListener(view -> openAvatarOverlaySettings());
         settingsContent.addView(avatarOverlayButton, matchWrap());
+        Button notificationAccessButton = button("Configurar lectura de notificaciones");
+        notificationAccessButton.setOnClickListener(view -> openNotificationAccessSettings());
+        settingsContent.addView(notificationAccessButton, matchWrap());
 
         conversationScroll = new ScrollView(this);
         conversationScroll.setFillViewport(true);
@@ -381,77 +381,62 @@ public class MainActivity extends Activity {
             messageInput.setError("Limita cada mensaje a 1800 caracteres para el modelo local.");
             return;
         }
-        if (!localModelReady) {
-            messageInput.setError("La IA local todavía no está preparada.");
-            return;
-        }
-        String prompt;
-        try {
-            prompt = buildLocalPrompt(text);
-        } catch (JSONException error) {
-            addMessage("Error", "No se pudo preparar el historial local: " + error.getMessage(), false);
-            return;
-        }
         messageInput.setText("");
         sendButton.setEnabled(false);
         talkButton.setEnabled(false);
         addMessage("Tú", text, false);
-        appendLocalMessage("user", text);
         addMessage("Sirvienta", "Pensando…", false);
+        boolean speakResponse = speakReplies.isChecked();
 
         networkWorker.execute(() -> {
             try {
                 DeviceActionHandler.Result localAction =
                         DeviceActionHandler.executeLocalCommand(getApplicationContext(), text);
-                String reply = localAction == null ? LocalLlm.generate(prompt, 192) : localAction.message;
+                String prompt = localAction == null ? buildLocalPrompt(text) : null;
+                LocalConversationHistory.append(getApplicationContext(), "user", text);
+                String reply;
+                if (localAction != null) {
+                    reply = localAction.message;
+                } else {
+                    runOnUiThread(() -> {
+                        if (connectionStatus != null) {
+                            connectionStatus.setText("●  CARGANDO IA LOCAL");
+                            connectionStatus.setTextColor(COLOR_CYAN);
+                        }
+                    });
+                    LocalLlm.load(getApplicationContext());
+                    reply = LocalLlm.generate(prompt, 192);
+                }
                 LocalConversationHistory.append(getApplicationContext(), "assistant", reply);
+                if (localAction == null && speakResponse) {
+                    LocalLlm.close();
+                }
                 runOnUiThread(() -> {
                     removeThinkingMessage();
                     addMessage("Sirvienta", reply, false);
                     sendButton.setEnabled(true);
                     talkButton.setEnabled(true);
-                    if (speakReplies.isChecked()) {
+                    if (localAction == null && connectionStatus != null) {
+                        connectionStatus.setText("●  ACCIONES LOCALES LISTAS · IA BAJO DEMANDA");
+                        connectionStatus.setTextColor(COLOR_CYAN);
+                    }
+                    if (speakResponse) {
                         speakReply(reply);
                     } else {
                         finishVoiceTurn();
                     }
                 });
-            } catch (IllegalStateException | IllegalArgumentException | JSONException error) {
+            } catch (IOException | IllegalStateException | IllegalArgumentException | JSONException error) {
                 runOnUiThread(() -> {
                     removeThinkingMessage();
                     addMessage("Error", error.getMessage(), false);
+                    if (connectionStatus != null) {
+                        connectionStatus.setText("●  ACCIONES LOCALES LISTAS · IA BAJO DEMANDA");
+                        connectionStatus.setTextColor(COLOR_CYAN);
+                    }
                     sendButton.setEnabled(true);
                     talkButton.setEnabled(true);
                     finishVoiceTurn();
-                });
-            }
-        });
-    }
-
-    private void initializeLocalModel() {
-        updateModelStatus(false, "Cargando el modelo incluido en la app…");
-        sendButton.setEnabled(false);
-        networkWorker.execute(() -> {
-            try {
-                LocalLlm.load(getApplicationContext());
-                BundledSpeechOutput.getInstance().prepare(getApplicationContext());
-                runOnUiThread(() -> {
-                    localModelReady = true;
-                    sendButton.setEnabled(true);
-                    updateModelStatus(true, "");
-                    if (!pendingUpdateSpeech.isEmpty()
-                            && speakReplies.isChecked()) {
-                        String updateMessage = pendingUpdateSpeech;
-                        pendingUpdateSpeech = "";
-                        speakReply(updateMessage);
-                    }
-                });
-            } catch (IOException | IllegalStateException error) {
-                runOnUiThread(() -> {
-                    localModelReady = false;
-                    sendButton.setEnabled(false);
-                    updateModelStatus(false, error.getMessage());
-                    addMessage("Error", "No se pudo iniciar la IA local: " + error.getMessage(), false);
                 });
             }
         });
@@ -465,14 +450,6 @@ public class MainActivity extends Activity {
 
     private String buildLocalPrompt(String currentMessage) throws JSONException {
         return LocalConversationHistory.buildPrompt(this, currentMessage);
-    }
-
-    private void appendLocalMessage(String role, String content) {
-        try {
-            LocalConversationHistory.append(this, role, content);
-        } catch (JSONException error) {
-            addMessage("Sistema", "No se pudo guardar el historial local: " + error.getMessage(), false);
-        }
     }
 
     private void startDirectSpeechRecognition() {
@@ -655,6 +632,26 @@ public class MainActivity extends Activity {
                 Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
                 Uri.parse("package:" + getPackageName()));
         startActivity(settingsIntent);
+    }
+
+    private void openNotificationAccessSettings() {
+        if (NotificationAccessService.hasNotificationAccess(this)) {
+            addMessage(
+                    "Sistema",
+                    "Sirvienta puede leer las notificaciones activas que Android muestra. El contenido se procesa en este móvil y solo se consulta cuando lo pides.",
+                    false);
+        } else {
+            addMessage(
+                    "Sistema",
+                    "Android exige que actives manualmente el acceso a notificaciones. Sirvienta solo podrá leer notificaciones visibles; no puede abrir ni inspeccionar la bandeja privada dentro de Instagram.",
+                    false);
+        }
+        try {
+            startActivity(new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS));
+        } catch (ActivityNotFoundException error) {
+            Log.e("SirvientaMain", "No se encontraron los ajustes de acceso a notificaciones.", error);
+            addMessage("Error", "No se pudieron abrir los ajustes de notificaciones.", false);
+        }
     }
 
     private void refreshAvatarOverlayButton() {
@@ -844,11 +841,7 @@ public class MainActivity extends Activity {
                 + "). Toca para descargarla; Android te pedirá confirmar la instalación.";
         addMessage("Sistema", notice, false);
         if (getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(PREF_SPEAK_REPLIES, true)) {
-            pendingUpdateSpeech = "Hay una actualización de Sirvienta. Te aviso para que puedas instalarla.";
-            if (localModelReady) {
-                speakReply(pendingUpdateSpeech);
-                pendingUpdateSpeech = "";
-            }
+            speakReply("Hay una actualización de Sirvienta. Te aviso para que puedas instalarla.");
         }
         new AlertDialog.Builder(this)
                 .setTitle("Actualización disponible")
@@ -994,14 +987,6 @@ public class MainActivity extends Activity {
                 }
             }
         }
-    }
-
-    private void updateModelStatus(boolean ready, String details) {
-        if (connectionStatus == null) {
-            return;
-        }
-        connectionStatus.setText(ready ? "● IA local lista" : "● IA local · " + details);
-        connectionStatus.setTextColor(ready ? 0xff7dd3a8 : 0xffff9292);
     }
 
     private void refreshListeningStatus() {
