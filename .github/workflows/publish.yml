@@ -154,8 +154,10 @@ jobs:
         run: |
           gh release delete sirvienta-latest --yes --cleanup-tag || true
           git push origin --delete refs/tags/sirvienta-latest || true
+          cp android/app/build/outputs/apk/release/app-release.apk \
+            "$RUNNER_TEMP/sirvienta-android-beta.apk"
           gh release create sirvienta-latest \
-            "android/app/build/outputs/apk/release/app-release.apk#sirvienta-android-beta.apk" \
+            "$RUNNER_TEMP/sirvienta-android-beta.apk" \
             "$RUNNER_TEMP/latest.json" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \

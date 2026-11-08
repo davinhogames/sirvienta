@@ -9,6 +9,23 @@ from pathlib import Path
 
 
 class GitHubPagesBuildTests(unittest.TestCase):
+    def test_release_asset_name_matches_the_manifest_download_url(self) -> None:
+        repository_root = Path(__file__).resolve().parents[1]
+        workflow = (repository_root / ".github" / "workflows" / "publish.yml").read_text(
+            encoding="utf-8"
+        )
+        workflow = " ".join(workflow.replace("\\\n", " ").split())
+
+        self.assertIn(
+            'cp android/app/build/outputs/apk/release/app-release.apk "$RUNNER_TEMP/sirvienta-android-beta.apk"',
+            workflow,
+        )
+        self.assertIn(
+            'gh release create sirvienta-latest "$RUNNER_TEMP/sirvienta-android-beta.apk" "$RUNNER_TEMP/latest.json"',
+            workflow,
+        )
+        self.assertIn("/download/sirvienta-android-beta.apk", workflow)
+
     def test_builds_self_contained_download_site_from_release_manifest(self) -> None:
         repository_root = Path(__file__).resolve().parents[1]
         with tempfile.TemporaryDirectory() as temporary_directory:
